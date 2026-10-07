@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body><div id="fixture"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import DMProfileHistory from '../src/DMProfileHistory.jsx';
+import '../src/styles/DM.css';
+const history=[{id:'one',name:'Name One',status_emoji:'🩵',avatar_url:'/fixture/avatar.jpg'},
+  {id:'two',name:'Name Two',status_emoji:'🌙',avatar_url:'/fixture/avatar.jpg'}];
+createRoot(document.getElementById('fixture')).render(React.createElement(DMProfileHistory,{
+  history,selected:history[0],message:{id:'message#1',source_id:'message',body_index:1,sent_at:'2026-10-03T00:00:00Z'},
+  rangeMessages:[{id:'message#1',source_id:'message',body_index:1,sent_at:'2026-10-03T00:00:00Z',blocks:[{type:'text',text:'test'}]}],
+  room:{id:'r',display_name:'Name'},isAdmin:true,
+  onClose:()=>{},onSaved:data=>{window.savedProfile=data;}
+}));
+</script></body></html>

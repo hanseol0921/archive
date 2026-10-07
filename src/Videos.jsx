@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
-import ArchiveFilters from "./ArchiveFilters";
+import ArchiveFilters, { ArchiveSortControl } from "./ArchiveFilters";
 import { getPopularityScore, trackMediaEngagement } from "./mediaPopularity";
-import "./App.css";
+import "./styles/App.css";
 import TagPicker from "./TagPicker";
 import ContentReport from "./ContentReport";
 import { deleteFromR2, getR2Key, uploadToR2 } from "./r2Storage";
+import "./styles/Videos.css";
+import VideoLibrary from "./VideoLibrary";
+import ArchiveVideoPlayer, { LazyVideoThumbnail } from "./ArchiveVideoPlayer";
+import { weverseFolderMatches } from "./youtubeContent";
+import { withVideoSourceTags } from "./videoClassification";
+import { isPhotoVisible, isDmMedia } from "./photoVisibility";
+import useArchiveVisibility from "./useArchiveVisibility";
 
-function Videos({ isAdmin = false }) {
+function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderItems = [], folderId = "weverse", onAssignFolder, folderSaving }) {
+  const visibility = useArchiveVisibility(isAdmin);
   const [videos, setVideos] = useState([]);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,21 +27,19 @@ function Videos({ isAdmin = false }) {
   const [savingThumbnail, setSavingThumbnail] = useState(false);
   const [editingVideo, setEditingVideo] = useState(false);
   const [savingVideo, setSavingVideo] = useState(false);
-  const [editVideoType, setEditVideoType] = useState("");
   const [editVideoHairColor, setEditVideoHairColor] = useState("");
   const [editVideoTags, setEditVideoTags] = useState("");
   const [editVideoSearchTags, setEditVideoSearchTags] = useState("");
   const modalVideoRef = useRef(null);
-  const modalBackgroundRef = useRef(null);
+
 
   const [sortOrder, setSortOrder] = useState("최신순");
 
-  const [videoType, setVideoType] = useState("전체");
 
-  const [videoTag, setVideoTag] = useState("전체");
   const [videoHairColor, setVideoHairColor] = useState("전체");
 
   const [search, setSearch] = useState("");
+  const [extraSelection, setExtraSelection] = useState({});
 
   const [startDate, setStartDate] = useState("");
 
@@ -49,7 +55,6 @@ function Videos({ isAdmin = false }) {
     setThumbnailTime(Number(selectedVideo.thumbnail_time) || 0);
     setVideoDuration(0);
     setEditingVideo(false);
-    setEditVideoType(selectedVideo.type || "");
     setEditVideoHairColor(selectedVideo.hair_color || "");
     setEditVideoTags(
       Array.isArray(selectedVideo.tags) ? selectedVideo.tags.join(", ") : "",
@@ -72,11 +77,11 @@ function Videos({ isAdmin = false }) {
     if (!selectedVideo) return;
 
     const nextValues = {
-      type: editVideoType || null,
       hair_color: editVideoHairColor || null,
       tags: splitTags(editVideoTags),
       search_tags: splitTags(editVideoSearchTags),
     };
+    nextValues.tags = withVideoSourceTags({ ...selectedVideo, ...nextValues }, getPost(selectedVideo)).tags;
 
     setSavingVideo(true);
     try {
@@ -127,7 +132,6 @@ function Videos({ isAdmin = false }) {
   }
 
   function searchVideoTag(tag) {
-    setVideoTag("전체");
     setSearch(tag);
     setSelectedVideo(null);
   }
@@ -150,9 +154,7 @@ function Videos({ isAdmin = false }) {
       showThumbnailFrame(modalVideoRef.current, nextTime);
     }
 
-    if (modalBackgroundRef.current) {
-      showThumbnailFrame(modalBackgroundRef.current, nextTime);
-    }
+
   }
 
   async function captureVideoThumbnail(videoElement, time) {
@@ -281,7 +283,7 @@ function Videos({ isAdmin = false }) {
         throw postError;
       }
 
-      setVideos(videoData || []);
+      setVideos((videoData || []).map((video) => withVideoSourceTags(video, (postData || []).find((post) => String(post.id) === String(video.post_id)))));
       setPosts(postData || []);
     } catch (error) {
       console.error("동영상 불러오기 오류:", error);
@@ -291,6 +293,10 @@ function Videos({ isAdmin = false }) {
   }
 
   function getPost(video) {
+    if (video?.dm_sent_at) {
+      const date = new Date(video.dm_sent_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+      return { date, posted_at: video.dm_sent_at, content: 'DM' };
+    }
     if (!video?.post_id) {
       return null;
     }
@@ -340,21 +346,21 @@ function Videos({ isAdmin = false }) {
   const filteredVideos = useMemo(() => {
     return [...videos]
       .filter((video) => {
-        if (!isAdmin && video.archive_visible === false) return false;
+        if (!isAdmin && isDmMedia(video)) return false;
+        if (!isAdmin && (!visibility.ready || !isPhotoVisible(video, extraSelection, visibility.allowed))) return false;
 
         const post = getPost(video);
+        if (!weverseFolderMatches(folderItems, folderId, video, post)) return false;
 
         const videoDate = post?.date || "";
 
         // 유형
-        const matchesType = videoType === "전체" || video.type === videoType;
 
         const tags = Array.isArray(video.tags) ? video.tags : [];
         const searchTags = Array.isArray(video.search_tags)
           ? video.search_tags
           : [];
 
-        const matchesTag = videoTag === "전체" || tags.includes(videoTag);
         const matchesHairColor =
           videoHairColor === "전체" || video.hair_color === videoHairColor;
 
@@ -381,9 +387,7 @@ function Videos({ isAdmin = false }) {
           );
 
         return (
-          matchesType &&
           matchesHairColor &&
-          matchesTag &&
           matchesStartDate &&
           matchesEndDate &&
           matchesSearch
@@ -408,27 +412,20 @@ function Videos({ isAdmin = false }) {
     videos,
     posts,
     sortOrder,
-    videoType,
-    videoTag,
     videoHairColor,
     search,
+    extraSelection,
+    isAdmin,
+    visibility.ready,
+    visibility.allowed,
     startDate,
     endDate,
+    folderItems,
+    folderId,
   ]);
 
-  const videoTagOptions = useMemo(
-    () =>
-      [...new Set(videos.flatMap((video) =>
-        Array.isArray(video.tags) ? video.tags : [],
-      ))]
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b, "ko")),
-    [videos],
-  );
 
-  const visibleVideoCount = videos.filter(
-    (video) => video.archive_visible !== false,
-  ).length;
+  const visibleVideoCount = filteredVideos.length;
 
   async function downloadVideo(video) {
     try {
@@ -468,25 +465,28 @@ function Videos({ isAdmin = false }) {
               <ArchiveLayout
                 isAdmin={isAdmin}
                 activeTab="videos"
+                sidebarContent={folderSidebar}
                 search={search}
                 onSearchChange={setSearch}
-                searchPlaceholder="동영상이나 키워드를 검색해보세요"
+                searchPlaceholder="검색어를 입력하세요"
               >
-                <div className="archive-media-count" aria-label="동영상 개수">
-                  {isAdmin ? (
-                    <>
-                      <span>ARCHIVE <strong>{visibleVideoCount}</strong></span>
-                      <i>/</i>
-                      <span>TOTAL <strong>{videos.length}</strong></span>
-                    </>
-                  ) : (
-                    <span>TOTAL <strong>{visibleVideoCount}</strong></span>
-                  )}
-                </div>
+                <div className="video-folders-mobile">{folderSidebar}</div>
+                {folderControls}
 
+
+                {visibility.error && <p role="alert">{visibility.error}</p>}
+                {visibility.notice && <p role="status">{visibility.notice}</p>}
                 <ArchiveFilters
-                  type={videoType}
-                  setType={setVideoType}
+                  search={search}
+                  setSearch={setSearch}
+                  searchPlaceholder="검색어를 입력하세요"
+                  showType={false}
+                  extraSelection={isAdmin ? visibility.allowed : extraSelection}
+                  setExtraSelection={isAdmin ? visibility.change : setExtraSelection}
+                  extraDisabled={isAdmin && (!visibility.ready || visibility.saving)}
+                  extraHelp={isAdmin ? "체크한 항목의 자료를 공개 아카이브에서 허용합니다. DM은 관리자 전용입니다." : ""}
+                  includeDm={isAdmin}
+                  extraIsPublicationSetting={isAdmin}
                   sortOrder={sortOrder}
                   setSortOrder={setSortOrder}
                   startDate={startDate}
@@ -498,23 +498,23 @@ function Videos({ isAdmin = false }) {
                   setSecondaryValue={setVideoHairColor}
                   secondaryLabel="머리색"
                   secondaryOptions={["흑발", "갈발", "금발", "적발", "은발", "핑머", "주머", "와인", "베이지"]}
-                  tertiaryValue={videoTag}
-                  setTertiaryValue={setVideoTag}
-                  tertiaryLabel="동영상 태그"
-                  tertiaryOptions={videoTagOptions}
                   allActive={
-                    videoType === "전체" &&
                     videoHairColor === "전체" &&
-                    videoTag === "전체" &&
                     search.trim() === ""
                   }
                   onAllClick={() => {
-                    setVideoType("전체");
                     setVideoHairColor("전체");
-                    setVideoTag("전체");
                     setSearch("");
                   }}
                 />
+
+                <ArchiveSortControl
+          value={sortOrder}
+          onChange={setSortOrder}
+          count={visibleVideoCount}
+          unit="개"
+          adminTotal={isAdmin ? videos.length : undefined}
+        />
 
                 <div className="video-grid">
                   {loading && (
@@ -549,19 +549,7 @@ function Videos({ isAdmin = false }) {
                                 decoding="async"
                               />
                             ) : (
-                              <video
-                                key={`${video.id}-${video.thumbnail_time || 0}`}
-                                src={video.video_url}
-                                preload="metadata"
-                                muted
-                                playsInline
-                                onLoadedMetadata={(event) =>
-                                  showThumbnailFrame(
-                                    event.currentTarget,
-                                    video.thumbnail_time
-                                  )
-                                }
-                              />
+                              <LazyVideoThumbnail key={video.id} src={video.video_url} time={video.thumbnail_time} onLoadedMetadata={showThumbnailFrame} />
                             )}
                             <div className="video-thumbnail-play">▶</div>
                           </div>
@@ -617,75 +605,50 @@ function Videos({ isAdmin = false }) {
                   onClick={() => setSelectedVideo(null)}
                 >
                   <div
-                    className="video-modal-content"
+                    className={`video-modal-content video-detail-panel ${editingVideo ? "is-editing" : ""}`}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="동영상 상세"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <header className="photo-detail-header video-detail-header">
+                    {editingVideo ? <strong>동영상 정보 수정</strong> : <details className="content-detail-menu photo-detail-menu">
+                      <summary aria-label="동영상 메뉴">⋯</summary>
+                      <div>
+                        {!isAdmin && <button type="button" onClick={() => setReportTarget({ type: "video", id: selectedVideo.id, label: `${getPost(selectedVideo)?.date || ""} 동영상`.trim(), previewUrl: selectedVideo.thumbnail_url || null, pageUrl: window.location.href })}>태그 제안 · 수정 요청</button>}
+                        {isAdmin && <><button type="button" onClick={() => setEditingVideo(true)}>동영상 정보 수정</button><button type="button" onClick={deleteSelectedVideo}>동영상 삭제</button></>}
+                      </div>
+                    </details>}
                     <button
                       type="button"
-                      className="modal-close"
+                      className="photo-detail-close"
+                      aria-label="동영상 상세 닫기"
                       onClick={() => setSelectedVideo(null)}
                     >
                       ×
                     </button>
-
-                    {!isAdmin && (
-                      <details className="content-detail-menu">
-                        <summary aria-label="동영상 설정">⋮</summary>
-                        <div>
-                          <button type="button" onClick={() => setReportTarget({
-                            type: "video",
-                            id: selectedVideo.id,
-                            label: `${getPost(selectedVideo)?.date || ""} 동영상`.trim(),
-                            previewUrl: selectedVideo.thumbnail_url || null,
-                            pageUrl: getPost(selectedVideo)?.weverse_url || window.location.href,
-                          })}>
-                            제보하기 · 수정 요청
-                          </button>
-                        </div>
-                      </details>
-                    )}
+                    </header>
 
                     <div className="video-modal-player">
-                      <video
-                        ref={modalBackgroundRef}
-                        className="video-modal-background"
-                        src={selectedVideo.video_url}
-                        poster={selectedVideo.thumbnail_url || undefined}
-                        muted
-                        preload="metadata"
-                        playsInline
-                        aria-hidden="true"
-                        onLoadedMetadata={(event) =>
-                          showThumbnailFrame(event.currentTarget, thumbnailTime)
-                        }
-                      />
-                      <video
-                        ref={modalVideoRef}
-                        className="video-modal-main"
-                        crossOrigin="anonymous"
-                        src={selectedVideo.video_url}
-                        poster={selectedVideo.thumbnail_url || undefined}
-                        controls
-                        controlsList="nodownload"
-                        preload="metadata"
-                        playsInline
-                        onLoadedMetadata={(event) => {
-                          setVideoDuration(event.currentTarget.duration || 0);
-                          showThumbnailFrame(event.currentTarget, thumbnailTime);
-                        }}
-                      />
+                      <ArchiveVideoPlayer key={selectedVideo.id} ref={modalVideoRef} src={selectedVideo.video_url} poster={selectedVideo.thumbnail_url} capture={isAdmin} onDuration={setVideoDuration} />
                     </div>
 
                     <div className="video-modal-info">
-                      {isAdmin && videoDuration > 0 && (
-                        <div className="video-thumbnail-editor">
+                      {isAdmin && onAssignFolder && <label className="weverse-folder-select">폴더
+                        <select disabled={folderSaving} value={folderItems.find((item) => (item.videoIds || []).some((id) => String(id) === String(selectedVideo.id)))?.id || "weverse"} onChange={(event) => onAssignFolder(selectedVideo.id, event.target.value)}>
+                          {folderItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                        </select>
+                      </label>}
+                      {isAdmin && (
+                        <details className="video-thumbnail-editor">
+                          <summary>썸네일 장면 선택</summary>
                           <div className="video-thumbnail-editor-title">
                             썸네일 장면 선택
                           </div>
                           <input
                             type="range"
                             min="0"
-                            max={videoDuration}
+                            max={videoDuration || Math.max(thumbnailTime, 1)}
                             step="0.1"
                             value={thumbnailTime}
                             onChange={(event) =>
@@ -697,12 +660,12 @@ function Videos({ isAdmin = false }) {
                             <button
                               type="button"
                               onClick={saveThumbnailTime}
-                              disabled={savingThumbnail}
+                              disabled={savingThumbnail || videoDuration <= 0}
                             >
-                              {savingThumbnail ? "저장 중..." : "이 장면 저장"}
+                              {savingThumbnail ? "저장 중..." : videoDuration > 0 ? "이 장면 저장" : "영상 불러오는 중..."}
                             </button>
                           </div>
-                        </div>
+                        </details>
                       )}
                       {getPost(selectedVideo) && (
                         <div className="video-date">
@@ -715,12 +678,9 @@ function Videos({ isAdmin = false }) {
                         </div>
                       )}
 
-                      {(selectedVideo.type || selectedVideo.hair_color) && (
+                      {selectedVideo.hair_color && (
                         <div className="modal-meta">
-                          {selectedVideo.type}
-                          {selectedVideo.hair_color && (
-                            <><span>{" · "}</span>{selectedVideo.hair_color}</>
-                          )}
+                          {selectedVideo.hair_color}
                         </div>
                       )}
 
@@ -733,7 +693,7 @@ function Videos({ isAdmin = false }) {
                               key={tag}
                               onClick={() => searchVideoTag(tag)}
                             >
-                              #{tag}
+                              {tag}
                             </button>
                           ))}
                         </div>
@@ -741,19 +701,6 @@ function Videos({ isAdmin = false }) {
 
                       {isAdmin && editingVideo && (
                         <div className="video-detail-editor">
-                          <label>
-                            동영상 유형
-                            <select
-                              value={editVideoType}
-                              onChange={(e) => setEditVideoType(e.target.value)}
-                            >
-                              <option value="">유형 선택</option>
-                              <option value="셀카">셀카</option>
-                              <option value="남찍사">남찍사</option>
-                              <option value="거울셀카">거울셀카</option>
-                              <option value="그외">그외</option>
-                            </select>
-                          </label>
                           <label>
                             머리색
                             <select
@@ -796,17 +743,7 @@ function Videos({ isAdmin = false }) {
                         </div>
                       )}
 
-                      {isAdmin && !editingVideo && (
-                        <div className="video-admin-actions">
-                          <button type="button" onClick={() => setEditingVideo(true)}>
-                            수정
-                          </button>
-                          <button type="button" onClick={deleteSelectedVideo}>
-                            삭제
-                          </button>
-                        </div>
-                      )}
-
+                      <div className="photo-detail-actions video-detail-actions">
                       <button
                         type="button"
                         className="media-download-button video-modal-download"
@@ -828,6 +765,7 @@ function Videos({ isAdmin = false }) {
                           위버스에서 보기 ↗
                         </a>
                       )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -837,4 +775,6 @@ function Videos({ isAdmin = false }) {
           );
 }
 
-export default Videos;
+export default function Videos({ isAdmin = false }) {
+  return <VideoLibrary isAdmin={isAdmin} WeverseVideos={WeverseVideos} />;
+}

@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
+import { isUnclassifiedType } from "./mediaClassification";
 import ArchiveLayout from "./ArchiveLayout";
-import ArchiveFilters from "./ArchiveFilters";
-import "./App.css";
+import ArchiveFilters, { ArchiveSortControl } from "./ArchiveFilters";
+import "./styles/App.css";
 import TagPicker from "./TagPicker";
 import ContentReport from "./ContentReport";
 import { deleteFromR2, getR2Key } from "./r2Storage";
+import { isPhotoVisible } from "./photoVisibility";
+import useArchiveVisibility from "./useArchiveVisibility";
 import { getPopularityScore, trackMediaEngagement } from "./mediaPopularity";
+import "./styles/Archive.css";
 
 function Archive({ isAdmin = false }) {
+  const visibility = useArchiveVisibility(isAdmin);
   const isMobileDevice =
     navigator.userAgentData?.mobile ??
     /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -29,6 +34,9 @@ function Archive({ isAdmin = false }) {
     scenery: false,
     food: false,
     members: false,
+    dogs: false,
+    other: false,
+    dm: false,
   });
 
   const [selectedPhoto, setSelectedPhoto] = useState(null);
@@ -40,6 +48,7 @@ function Archive({ isAdmin = false }) {
   const photoTriggerRef = useRef(null);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState(() => new Set());
   const [bulkDownloading, setBulkDownloading] = useState(false);
+  const [downloadingPhoto, setDownloadingPhoto] = useState(false);
   const [bulkDownloadProgress, setBulkDownloadProgress] = useState("");
   const [tagAliases, setTagAliases] = useState([]);
   const photoModalOpen = selectedPhoto !== null;
@@ -171,69 +180,9 @@ function Archive({ isAdmin = false }) {
   useEffect(() => {
     getPhotos();
     getTagAliases();
-    // =========================
-// 사진과 연결된 게시글 불러오기
-// =========================
-
-async function getPhotoPost(photo) {
-  console.log("클릭한 사진:", photo);
-  console.log("사진의 post_id:", photo?.post_id);
-
-  if (!photo?.post_id) {
-    setSelectedPost(null);
-    setPostPhotos([]);
-    return;
-  }
-
-  // 이하 기존 코드 그대로
-
-  setLoadingPost(true);
-
-  try {
-    // 게시글 정보
-    const {
-      data: postData,
-      error: postError,
-    } = await supabase
-      .from("weverse_posts")
-      .select("*")
-      .eq("id", photo.post_id)
-      .single();
-
-    if (postError) {
-      throw postError;
-    }
-
-    // 같은 게시글에 연결된 사진들
-    const {
-      data: relatedPhotos,
-      error: photosError,
-    } = await supabase
-      .from("photos")
-      .select("*")
-      .eq("post_id", photo.post_id)
-      .order("upload_order", {
-        ascending: true,
-      });
-
-    if (photosError) {
-      throw photosError;
-    }
-
-    setSelectedPost(postData);
-    setPostPhotos(relatedPhotos || []);
-  } catch (error) {
-    console.error(
-      "게시글 정보를 불러오지 못했습니다:",
-      error
-    );
-
-    setSelectedPost(null);
-    setPostPhotos([]);
-  } finally {
-    setLoadingPost(false);
-  }
-}
+    const reloadClassification = () => getPhotos();
+    window.addEventListener("archive:classification-updated", reloadClassification);
+    return () => window.removeEventListener("archive:classification-updated", reloadClassification);
   }, []);
 
   async function getPhotos() {
@@ -254,6 +203,8 @@ async function getPhotoPost(photo) {
       }
 
       allPhotos.push(...(data || []));
+      // Render each page while the remaining metadata loads.
+      setPhotos([...allPhotos]);
 
       if (!data || data.length < pageSize) {
         break;
@@ -729,7 +680,7 @@ async function getPhotoPost(photo) {
           tags: tagArray,
           search_tags: searchTagArray,
           weverse_url: editWeverseUrl,
-          archive_visible: editArchiveVisible,
+          archive_visible: ["스크린샷", "같은사진"].includes(editType) ? false : editArchiveVisible,
 
           // ★ 크롭 위치 저장
           crop_position: cropPosition,
@@ -770,7 +721,6 @@ async function getPhotoPost(photo) {
 
       setEditMode(false);
 
-      alert("수정되었습니다.");
     } catch (error) {
       console.error(
         "수정 오류:",
@@ -785,13 +735,15 @@ async function getPhotoPost(photo) {
     }
   }
 
-  
+
 
   // =========================
   // 사진 다운로드
   // =========================
 
-  function downloadPhoto(photo) {
+  async function downloadPhoto(photo) {
+    if (downloadingPhoto) return;
+    setDownloadingPhoto(true);
     try {
       const imageUrl = new URL(photo.image_url);
       const pathExtension =
@@ -799,25 +751,37 @@ async function getPhotoPost(photo) {
       const extension = pathExtension === "jpeg" ? "jpg" : pathExtension;
       const fileName = `riwoo_${photo.date || "photo"}_${photo.id}.${extension}`;
 
-      /*
-        갤럭시의 삼성 인터넷/Chrome에서는 fetch 후 만든 Blob 링크가
-        사용자 클릭 다운로드로 인정되지 않는 경우가 있습니다.
-        Supabase Storage가 Content-Disposition: attachment로 응답하도록
-        원본 공개 URL에 download 파일명을 직접 붙여 다운로드합니다.
-      */
-      imageUrl.searchParams.set("download", fileName);
-
+      const downloadUrl = `/api/photo-download?${new URLSearchParams({
+        url: imageUrl.toString(), filename: fileName,
+      })}`;
+      let response;
+      try {
+        response = await fetch(imageUrl.toString());
+      } catch {
+        // Use the server only when the storage origin blocks a direct fetch.
+        response = await fetch(downloadUrl);
+      }
+      if (!response.ok || !response.headers.get("content-type")?.toLowerCase().startsWith("image/")) {
+        await response.body?.cancel();
+        throw new Error("사진 파일을 불러오지 못했습니다.");
+      }
+      const blob = await response.blob();
+      if (!blob.size) throw new Error("사진 파일이 비어 있습니다.");
+      const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = imageUrl.toString();
+      link.href = objectUrl;
       link.download = fileName;
       link.rel = "noopener";
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
       void trackMediaEngagement("photo", photo.id, "download");
     } catch (error) {
       console.error("사진 다운로드 오류:", error);
-      window.location.href = photo.image_url;
+      showCopyNotice("사진 다운로드를 시작하지 못했습니다. 다시 시도해주세요.");
+    } finally {
+      setDownloadingPhoto(false);
     }
   }
 
@@ -1078,26 +1042,8 @@ const hairColorAliases = {
     current.createdTime = Math.min(current.createdTime, createdTime);
   });
 
-  function getHomeExtraGroups(photo) {
-    const realTags = Array.isArray(photo.tags) ? photo.tags : [];
-    return {
-      scenery: realTags.includes("풍경"),
-      food: realTags.includes("음식"),
-      members: ["성호", "명재현", "태산", "이한", "운학"]
-        .some((name) => realTags.includes(name)),
-    };
-  }
-
   function isVisibleOnPublicHome(photo) {
-    const groups = getHomeExtraGroups(photo);
-    const extraKeys = Object.keys(groups).filter((key) => groups[key]);
-
-    // 분류 태그가 있는 사진은 개별 공개값 대신 홈 토글을 따른다.
-    if (extraKeys.length) {
-      return extraKeys.some((key) => homeExtras[key]);
-    }
-
-    return photo.archive_visible !== false;
+    return visibility.ready && isPhotoVisible(photo, homeExtras, visibility.allowed);
   }
 
   const filteredPhotos =
@@ -1118,7 +1064,7 @@ const hairColorAliases = {
 
         const matchesType =
           photoType === "전체" ||
-          photo.type === photoType;
+          (photoType === "선택 안됨" ? isUnclassifiedType(photo.type) : photo.type === photoType);
 
         const matchesHairColorFilter =
           hairColorFilter === "전체" ||
@@ -1431,7 +1377,6 @@ const hairColorAliases = {
 
   const visiblePhotoCount = photos.filter(
     (photo) => {
-      if (isAdmin) return photo.archive_visible !== false;
       return isVisibleOnPublicHome(photo);
     },
   ).length;
@@ -1474,54 +1419,19 @@ const hairColorAliases = {
         onSearchChange={setSearch}
         searchPlaceholder="사진이나 키워드를 검색해보세요"
       >
-        <div className="archive-media-count" aria-label="사진 개수">
-          {isAdmin ? (
-            <>
-              <span>
-                ARCHIVE <strong>{visiblePhotoCount}</strong>
-              </span>
-              <i>/</i>
-              <span>
-                TOTAL <strong>{photos.length}</strong>
-              </span>
-            </>
-          ) : (
-            <span>
-              TOTAL <strong>{visiblePhotoCount}</strong>
-            </span>
-          )}
-        </div>
 
-        {!isAdmin && (
-          <div className="home-extra-toggles" aria-label="홈 사진 종류 선택">
-            <span>함께 보기</span>
-            {[
-              ["scenery", "풍경"],
-              ["food", "음식"],
-              ["members", "멤버"],
-            ].map(([key, label]) => (
-              <button
-                type="button"
-                key={key}
-                className={homeExtras[key] ? "active" : ""}
-                aria-pressed={homeExtras[key]}
-                onClick={() =>
-                  setHomeExtras((current) => ({
-                    ...current,
-                    [key]: !current[key],
-                  }))
-                }
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* 필터 */}
 
+        {visibility.error && <p role="alert">{visibility.error}</p>}
+        {visibility.notice && <p role="status">{visibility.notice}</p>}
         <ArchiveFilters
+          search={search}
+          setSearch={setSearch}
+          searchPlaceholder="사진이나 키워드를 검색해보세요"
+
           type={photoType}
+          showAdminPhotoTypes={isAdmin}
           setType={setPhotoType}
           sortOrder={sortOrder}
           setSortOrder={setSortOrder}
@@ -1529,6 +1439,12 @@ const hairColorAliases = {
           setStartDate={setStartDate}
           endDate={endDate}
           setEndDate={setEndDate}
+          extraSelection={isAdmin ? visibility.allowed : homeExtras}
+          setExtraSelection={isAdmin ? visibility.change : setHomeExtras}
+          extraDisabled={isAdmin && (!visibility.ready || visibility.saving)}
+          extraHelp={isAdmin ? "체크한 항목의 자료를 공개 아카이브에서 허용합니다. DM은 관리자 전용입니다." : ""}
+          includeDm={isAdmin}
+          extraIsPublicationSetting={isAdmin}
           typeLabel="사진 유형"
           secondaryValue={hairColorFilter}
           setSecondaryValue={setHairColorFilter}
@@ -1542,7 +1458,7 @@ const hairColorAliases = {
             "핑머",
             "주머",
             "와인",
-            "베이지"
+            "베이지",
           ]}
           allActive={
             photoType === "전체" &&
@@ -1554,6 +1470,14 @@ const hairColorAliases = {
             setHairColorFilter("전체");
             setSearch("");
           }}
+        />
+
+        <ArchiveSortControl
+          value={sortOrder}
+          onChange={setSortOrder}
+          count={visiblePhotoCount}
+          unit="장"
+          adminTotal={isAdmin ? photos.length : undefined}
         />
 
         {/* =========================
@@ -1586,13 +1510,14 @@ const hairColorAliases = {
         )}
 
         <div className="photo-grid">
-          {filteredPhotos.map((photo) => (
+          {filteredPhotos.map((photo, index) => (
             <div
               className={`photo-item ${selectedPhotoIds.has(photo.id) ? "is-selected" : ""}`}
               key={photo.id}
               onClick={() => {
                 setSelectedPhoto(photo);
-                setEditMode(false);
+                if (isAdmin) openEditMode(photo);
+                else setEditMode(false);
                 void trackMediaEngagement("photo", photo.id, "view");
               }}
             >
@@ -1612,7 +1537,8 @@ const hairColorAliases = {
                 <img
                   src={photo.thumbnail_url || photo.image_url}
                   alt=""
-                  loading="lazy"
+                  loading={index < 12 ? "eager" : "lazy"}
+                  fetchPriority={index < 6 ? "high" : "auto"}
                   decoding="async"
                   style={{
                     objectPosition: photo.crop_position || "50% 50%",
@@ -1707,10 +1633,10 @@ const hairColorAliases = {
                 className="photo-detail-close"
                 disabled={saving}
                 aria-label={
-                  editMode ? "수정 취소하고 상세로 돌아가기" : "사진 상세 닫기"
+                  editMode ? "사진 수정 닫기" : "사진 상세 닫기"
                 }
                 onClick={() =>
-                  editMode ? cancelEdit() : setSelectedPhoto(null)
+                  setSelectedPhoto(null)
                 }
               >
                 ×
@@ -1721,6 +1647,12 @@ const hairColorAliases = {
               <button
                 type="button"
                 className="modal-image photo-detail-image"
+                style={selectedPhoto.thumbnail_url ? {
+                  backgroundImage: `url(${JSON.stringify(selectedPhoto.thumbnail_url)})`,
+                  backgroundSize: "contain",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                } : undefined}
                 aria-label="사진 원본 확대 보기"
                 onClick={() => setZoomedPhoto(true)}
               >
@@ -1728,6 +1660,8 @@ const hairColorAliases = {
                   className="modal-image-main"
                   src={selectedPhoto.image_url}
                   alt="선택한 사진"
+                  decoding="async"
+                  fetchPriority="high"
                 />
               </button>
             )}
@@ -1778,9 +1712,10 @@ const hairColorAliases = {
                     <button
                       type="button"
                       className="media-download-button"
+                      disabled={downloadingPhoto}
                       onClick={() => downloadPhoto(selectedPhoto)}
                     >
-                      다운로드 ↓
+                      {downloadingPhoto ? "다운로드 준비 중…" : "다운로드 ↓"}
                     </button>
                     {selectedPhoto.weverse_url && (
                       <a
@@ -1846,15 +1781,18 @@ const hairColorAliases = {
 
                   <select
                     value={editType}
-                    onChange={(e) => setEditType(e.target.value)}
+                    onChange={(e) => { setEditType(e.target.value); if (["스크린샷", "같은사진"].includes(e.target.value)) setEditArchiveVisible(false); }}
                   >
+                    <option value="">선택 안됨</option>
                     <option value="셀카">셀카</option>
 
                     <option value="남찍사">남찍사</option>
 
                     <option value="거울셀카">거울셀카</option>
 
-                    <option value="그외">그외</option>
+
+                    <option value="리우뷰">리우뷰</option>
+                    <option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
                   </select>
 
                   <label className="archive-visible-toggle">
@@ -1863,7 +1801,7 @@ const hairColorAliases = {
                       checked={editArchiveVisible}
                       onChange={(e) => setEditArchiveVisible(e.target.checked)}
                     />
-                    사진 아카이브에 표시
+                    아카이브 표시
                   </label>
 
                   {/* 머리색 */}

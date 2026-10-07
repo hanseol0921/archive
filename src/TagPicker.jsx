@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
-import "./TagPicker.css";
+import "./styles/TagPicker.css";
 
 let tagCache = null;
 

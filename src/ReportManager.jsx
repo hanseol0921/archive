@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
-import "./ReportManager.css";
+import "./styles/ReportManager.css";
 
 const TYPE_LABELS = { photo: "사진", video: "동영상", post: "게시글", diary: "다이어리", archive: "자료 누락" };
 

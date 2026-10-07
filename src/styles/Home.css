@@ -1,0 +1,276 @@
+.home-extra-toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 7px;
+}
+.home-extra-toggles > span {
+  margin-right: 3px;
+  color: #9a9287;
+  font-size: 12px;
+}
+.home-extra-toggles button {
+  min-height: 25px;
+  padding: 3px 9px;
+  border: 1px solid #ddd7cd;
+  border-radius: 999px;
+  background: #fff;
+  color: #7c756b;
+  font-size: 12px;
+  cursor: pointer;
+}
+.home-extra-toggles button.active {
+  border-color: #55514a;
+  background: #55514a;
+  color: #fff;
+}
+.minihome-content {
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 1px 3px 10px 1px;
+}
+.minihome-news, .minihome-miniroom, .minihome-friends {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.minihome-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 20px;
+  padding-bottom: 5px;
+  border-bottom: 1px dotted #cbc8c1;
+  color: #56514b;
+}
+.minihome-section-title strong {
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  letter-spacing: .15px;
+}
+.minihome-section-title > span {
+  color: #aaa49a;
+  font: 700 12px/1 Arial, sans-serif;
+  letter-spacing: 1.2px;
+}
+.minihome-section-title button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #777168;
+  font-size: 12px;
+  cursor: pointer;
+}
+.minihome-news-title strong {
+  color: var(--archive-accent-text);
+  font-size: 14px;
+}
+.minihome-news-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(170px, .85fr);
+  gap: 22px;
+  padding-top: 5px;
+}
+.minihome-news-list {
+  display: grid;
+  align-content: start;
+}
+.minihome-news-list > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 0;
+  border: 0;
+  border-bottom: 1px dotted #e3dfd8;
+  background: transparent;
+  color: #5d5851;
+  text-align: left;
+  cursor: pointer;
+}
+.minihome-news-list > button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.minihome-news-badge {
+  min-width: 36px;
+  padding: 3px 4px;
+  border-radius: 2px;
+  background: var(--archive-accent);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+}
+.minihome-news-badge.type-다이어리 {
+  background: #f19a68;
+}
+.minihome-news-badge.type-사진첩 {
+  background: #e87984;
+}
+.minihome-news-text {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.minihome-new {
+  color: #ff5571;
+  font: 800 12px/1 Arial, sans-serif;
+}
+.minihome-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+.minihome-counts span {
+  padding: 5px 3px;
+  border-bottom: 1px dotted #d8d3ca;
+  color: #625d55;
+  font-size: 12px;
+}
+.minihome-counts b {
+  margin-left: 4px;
+  color: var(--archive-accent-text);
+  font-weight: 500;
+}
+.minihome-miniroom {
+  padding-bottom: 0;
+}
+.minihome-miniroom-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid #d7d5cf;
+  background: #f4f6f6;
+}
+.minihome-miniroom-stage > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+}
+.minihome-miniroom-placeholder {
+  display: grid;
+  place-content: center;
+  gap: 5px;
+  width: 100%;
+  height: 100%;
+  color: #aaa69e;
+  text-align: center;
+  background-image: linear-gradient(#e9f4f7 1px, transparent 1px), linear-gradient(90deg, #e9f4f7 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+.minihome-miniroom-placeholder span {
+  font: 700 13px/1 Arial, sans-serif;
+  letter-spacing: 2px;
+}
+.minihome-miniroom-placeholder small {
+  font-size: 12px;
+}
+.minihome-file-input {
+  display: none;
+}
+.minihome-friend-list {
+  display: grid;
+  padding-top: 6px;
+}
+.minihome-friend-list > p {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  padding: 3px 2px;
+  color: #706a62;
+}
+.minihome-friend-list > p span {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.minihome-friend-list > p strong {
+  flex: 0 0 auto;
+  color: #4d9cb5;
+  font-size: 12px;
+  font-weight: 500;
+}
+.minihome-friends-editor {
+  display: grid;
+  gap: 5px;
+  padding-top: 8px;
+}
+.minihome-friends-editor > div:not(.minihome-friends-editor-actions) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 95px auto;
+  gap: 5px;
+}
+.minihome-friends-editor input {
+  min-width: 0;
+  height: 27px;
+  padding: 4px 7px;
+  border: 1px solid #d8d3ca;
+  color: #625d55;
+  font-size: 12px;
+}
+.minihome-friends-editor button {
+  min-height: 27px;
+  padding: 3px 8px;
+  border: 1px solid #c9c3b9;
+  background: #fff;
+  color: #69635b;
+  font-size: 12px;
+  cursor: pointer;
+}
+.minihome-friends-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  padding-top: 3px;
+}
+.minihome-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 2px 8px;
+  color: #aaa398;
+  font-size: 12px;
+  text-align: center;
+}
+@media (max-width: 800px) {
+  .minihome-content {
+    gap: 7px;
+    padding-right: 0;
+  }
+  .minihome-news, .minihome-miniroom, .minihome-friends {
+    padding: 0;
+    border-radius: 0;
+  }
+  .minihome-news-body {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+  .minihome-news-list > button:nth-child(n + 4) {
+    display: none;
+  }
+  .minihome-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .minihome-friends-editor > div:not(.minihome-friends-editor-actions) {
+    grid-template-columns: minmax(0, 1fr) 76px auto;
+  }
+  .minihome-miniroom-stage {
+    aspect-ratio: 16 / 9;
+  }
+}

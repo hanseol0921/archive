@@ -26,3 +26,12 @@ dist-ssr
 
 .env
 .env.local
+.env.*
+!.env.example
+.vercel/
+*.zip
+*.pem
+*.key
+/*-preview.png
+/*-preview.jpg
+/*-proof.png

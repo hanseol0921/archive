@@ -1,0 +1,675 @@
+/* Fit the complete desktop notebook without changing its proportions. */
+@media (min-width: 801px) {
+  body:has(.page) #root {
+    width: 100%;
+    max-width: none;
+    border-inline: 0;
+  }
+  .page {
+    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .page > .archive {
+    width: 1270px;
+    height: 890px;
+    flex: 0 0 auto;
+    margin: 0;
+    zoom: var(--archive-scale, 1);
+  }
+}
+/* =========================
+  메인 프레임
+========================= */
+.main-frame {
+  position: relative;
+  display: flex;
+  gap: 0px;
+  width: 1160px;
+  height: 820px;
+  box-sizing: border-box;
+  /*
+    flex 자식들이 프레임 높이를
+    넘어가도 프레임 자체는 움직이지 않음
+  */
+  min-height: 0;
+  padding: 54px 30px 30px;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  border-radius: 13px;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35),
+    0 4px 8px rgba(70, 100, 110, 0.15);
+}
+/* =========================
+   프로필
+========================= */
+.profile {
+  width: 260px;
+  height: 730px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #d9d9d9;
+  padding: 48px 24px;
+  text-align: center;
+  /*
+    프로필 자체는 스크롤되지 않음
+  */
+  overflow: hidden;
+  /*
+    프레임 높이에 맞춰 고정
+  */
+  min-height: 0;
+}
+.profile-image {
+  border-radius: 5px;
+  border: 1px solid #d9d9d9;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e4e0d7;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #9c978d;
+}
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.profile-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.profile-image-edit {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.profile-image-edit:hover {
+  background: #ffffff;
+}
+.profile-name {
+  margin-top: 13px;
+  font-size: 14px;
+  font-weight: bold;
+}
+.profile-text {
+  margin: 24px 16px 0;
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: #8c867b;
+}
+.profile-line {
+  height: 1px;
+  background: #ded9d0;
+  margin: 20px 0;
+}
+.profile-info {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 3px;
+  font-size: 12px;
+  color: #999288;
+}
+.profile-info strong {
+  color: #666158;
+}
+/* =========================
+   본문 흰색 영역
+========================= */
+.content {
+  flex: 1;
+  width: 260px;
+  height: 730px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #d9d9d9;
+  padding: 30px 34px;
+  /*
+    ★★★★★
+    흰색 박스 자체는 절대 스크롤되지 않음
+  */
+  overflow: hidden;
+  /*
+    내부를 세로로 배치
+  */
+  display: flex;
+  flex-direction: column;
+}
+/* =========================
+   아카이브 종류 오른쪽 탭
+========================= */
+.archive-side-tabs {
+  position: absolute;
+  top: 89px;
+  /* 바깥 프레임이 아니라, 오른쪽에서 30px 안쪽인 콘텐츠 박스 선에 맞춘다. */
+  right: -33px;
+  width: 63px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 50;
+}
+/* 탭 */
+.archive-side-tab {
+  position: relative;
+  width: 63px;
+  height: 48px;
+  border: 1px solid transparent;
+  background: var(--archive-accent);
+  color: #ffffff;
+  border-radius: 0 9px 9px 0;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+}
+/* 현재 페이지 */
+.archive-side-tab.active {
+  z-index: 2;
+  border-color: #d9d9d9;
+  border-left-color: #ffffff;
+  background: #ffffff;
+  color: #55514a;
+  box-shadow: none;
+}
+.archive-side-tab.active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  width: 3px;
+  background: #ffffff;
+}
+/* hover */
+.archive-side-tab:hover {
+  filter: brightness(0.95);
+}
+/* =========================
+   공책 스프링 링
+========================= */
+.notebook-rings {
+  width: 12px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  /* ★ 위/아래 여백을 동일하게 */
+  padding: 100px 0;
+  position: relative;
+  z-index: 20;
+}
+.notebook-ring {
+  display: block;
+  width: 26px;
+  height: auto;
+  image-rendering: pixelated;
+}
+/* =========================
+   관리자 버튼
+========================= */
+.admin-button {
+  position: absolute;
+  top: 15px;
+  right: 30px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  color: #8e887e;
+  cursor: pointer;
+  z-index: 30;
+}
+.admin-button:hover {
+  color: #55514a;
+  text-decoration: underline;
+}
+/* =========================
+   책 상단 방문자 수 / 타이틀
+========================= */
+.archive-book-heading {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  right: 20px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 240px 6px minmax(0, 1fr);
+  align-items: center;
+  height: 28px;
+  pointer-events: none;
+}
+.archive-visitor-counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #8d877d;
+}
+.archive-visitor-counter strong {
+  color: #d9859a;
+  font-weight: 700;
+}
+.archive-visitor-counter i {
+  color: #c9c2b7;
+  font-style: normal;
+}
+.archive-book-title {
+  grid-column: 3;
+  justify-self: start;
+  padding-left: 52px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #625e57;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+/* 사이트 문구 수정 버튼 / 팝업 */
+.site-copy-edit-button {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  padding: 3px 7px;
+  border: 1px solid #cfc8bd;
+  border-radius: 3px;
+  background: #fff;
+  color: #7b746a;
+  font: 500 12px/1.2 Arial, sans-serif;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.site-copy-edit-button:hover {
+  background: #f7f4ee;
+}
+.site-copy-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(55, 51, 45, 0.35);
+}
+.site-copy-modal {
+  width: min(390px, 100%);
+  padding: 20px;
+  border: 1px solid #d8d1c6;
+  border-radius: 10px;
+  background: #fffdf9;
+  box-shadow: 0 14px 40px rgba(61, 54, 45, 0.2);
+}
+.site-copy-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  color: #5f5a52;
+  font-size: 17px;
+}
+.site-copy-modal-header button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #777066;
+  font-size: 24px;
+  cursor: pointer;
+}
+.site-copy-modal > label {
+  display: grid;
+  gap: 6px;
+  margin-top: 13px;
+  color: #797268;
+  font-size: 13px;
+}
+.site-copy-modal input,
+.site-copy-modal textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #d8d1c6;
+  border-radius: 4px;
+  background: #fff;
+  color: #4f4b45;
+  font: 14px/1.5 Arial, sans-serif;
+}
+.site-copy-modal textarea {
+  resize: vertical;
+}
+.site-copy-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 18px;
+}
+.site-copy-modal-actions button {
+  min-width: 66px;
+  padding: 8px 12px;
+  border: 1px solid #cfc8bd;
+  border-radius: 4px;
+  background: #fff;
+  color: #6c665d;
+  font-size: 13px;
+  cursor: pointer;
+}
+.site-copy-modal-actions button[type="submit"] {
+  border-color: #625e57;
+  background: #625e57;
+  color: #fff;
+}
+.site-copy-modal-actions button:disabled,
+.site-copy-modal-header button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+@media (max-width: 800px) {
+  .archive-report-button {
+    top: 3px !important;
+    left: 8px;
+    right: auto !important;
+  }
+  .page {
+    padding: 8px 6px 18px !important;
+  }
+  .archive {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .main-frame {
+    width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    display: block;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .profile,
+  .notebook-rings {
+    display: none !important;
+  }
+  .archive-book-heading {
+    position: static !important;
+    width: 100% !important;
+    margin: 0 0 7px !important;
+    padding: 0 4px !important;
+  }
+  .content {
+    position: relative !important;
+    width: 100% !important;
+    min-width: 0;
+    height: auto !important;
+    min-height: 0 !important;
+    margin-top: 74px !important;
+    padding: 12px 8px !important;
+    border: 1px solid #d9d9d9 !important;
+    border-radius: 9px !important;
+    box-shadow: none !important;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start !important;
+  }
+  .archive-side-tabs {
+    position: absolute !important;
+    top: auto !important;
+    bottom: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    align-items: flex-end !important;
+    gap: 3px !important;
+  }
+  .archive-side-tab {
+    width: auto !important;
+    min-width: 0 !important;
+    height: 32px !important;
+    flex: 1 1 0 !important;
+    margin-bottom: 1px !important;
+    border: 0 !important;
+    border-radius: 8px 8px 0 0 !important;
+    box-shadow: none !important;
+  }
+  .archive-side-tab.active {
+    z-index: 2;
+    height: 36px !important;
+    margin-bottom: -1px !important;
+    border: 1px solid #d9d9d9 !important;
+    border-bottom: 1px solid #ffffff !important;
+    background: #ffffff !important;
+    color: #55514a !important;
+  }
+  .archive-side-tab.active::before {
+    top: auto;
+    right: 0;
+    bottom: -2px;
+    left: 0;
+    width: auto;
+    height: 3px;
+  }
+  .top > .search-box {
+    display: none !important;
+  }
+  .mobile-tab-search {
+    display: flex;
+    align-items: center;
+    flex: 1 0 100%;
+    order: -1;
+    align-self: center;
+    min-width: 0;
+    height: 30px;
+    margin-left: 0;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .mobile-tab-search span {
+    flex: 0 0 auto;
+    padding-left: 7px;
+    font-size: 17px;
+  }
+  .mobile-tab-search input {
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    padding: 4px 7px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-size: 13px;
+  }
+  /* 관리자 버튼 */
+  .admin-button {
+    top: 15px;
+    right: 14px;
+  }
+}
+/* 상단 도구는 오른쪽에서 한 줄로 정리 */
+.archive > .top {
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 20px;
+}
+.profile-today-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 6px 12px;
+  margin: 0 0 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 5px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.profile-today-status strong {
+  flex: none;
+  font: 400 9px/1.6 "Press Start 2P", monospace;
+  color: #252525;
+}
+.profile-today-status > span, .profile-today-status > button {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #676159;
+}
+.profile-today-status > button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  cursor: pointer;
+}
+.archive .admin-header-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.archive > .top button {
+  position: static;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #767676;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.archive > .top button:hover {
+  border-color: var(--archive-accent-border);
+  color: var(--archive-accent-text);
+  background: var(--archive-accent-soft);
+}
+@media (min-width: 801px) {
+  .page {
+    padding: 8px 30px 88px;
+  }
+}
+@media (max-width: 800px) {
+  .archive > .top {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end !important;
+    gap: 6px;
+    padding: 0 2px;
+  }
+  .archive > .top button {
+    position: static !important;
+    inset: auto !important;
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .archive .admin-header-buttons {
+    gap: 6px;
+  }
+}
+/* 도구들은 화면 가장자리, 아카이브 본체는 독립적으로 중앙 정렬 */
+.archive-toolbar-space {
+  display: none;
+}
+.archive-global-toolbar {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: calc(100vw - 32px);
+}
+.archive-global-toolbar .admin-header-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.archive-global-toolbar button {
+  position: static !important;
+  inset: auto !important;
+  height: 28px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #767676;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.archive-global-toolbar button:hover {
+  border-color: var(--archive-accent-border);
+  color: var(--archive-accent-text);
+  background: var(--archive-accent-soft);
+}
+@media (min-width: 801px) {
+  .page {
+    padding: 48px 30px;
+  }
+  .page > .archive {
+    height: 820px;
+  }
+  .archive > .main-frame {
+    margin-inline: auto;
+  }
+}
+@media (max-width: 800px) {
+  .archive-global-toolbar {
+    top: 8px;
+    right: 8px;
+    max-width: calc(100vw - 16px);
+  }
+  .archive-global-toolbar button {
+    font-size: 11px;
+    padding: 0 7px;
+  }
+  .archive-toolbar-space {
+    display: block;
+    height: 66px;
+  }
+}

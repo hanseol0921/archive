@@ -1,0 +1,27 @@
+html,
+body,
+button,
+input,
+textarea,
+select {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  letter-spacing: -0.025em !important;
+}
+body * {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  letter-spacing: -0.025em !important;
+}
+h1, h2, h3, h4, h5, h6, strong, b, th, label, button.active, .active, [aria-current="page"] {
+  font-weight: 600 !important;
+}
+/* Keep the profile status label in its requested pixel font. */
+body .profile-today-status strong {
+  font-family: "Press Start 2P", monospace !important;
+  font-weight: 400 !important;
+  line-height: 1.6 !important;
+  letter-spacing: 0 !important;
+}

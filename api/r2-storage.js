@@ -2,6 +2,7 @@ import { DeleteObjectsCommand, PutObjectCommand, S3Client } from "@aws-sdk/clien
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createClient } from "@supabase/supabase-js";
 import process from "node:process";
+import { isArchiveAdmin } from "../src/adminAccess.js";
 
 const requiredEnv = [
   "VITE_SUPABASE_URL",
@@ -19,7 +20,7 @@ function json(response, status, body) {
 
 function validKey(key) {
   return typeof key === "string"
-    && /^(photos|videos)\//.test(key)
+    && /^(photos|videos|dm)\//.test(key)
     && !key.includes("..")
     && !key.includes("\\")
     && key.length <= 1024;
@@ -46,6 +47,7 @@ export default async function handler(request, response) {
   );
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return json(response, 401, { error: "관리자 로그인이 만료되었습니다." });
+  if (!isArchiveAdmin(user)) return json(response, 403, { error: "관리자만 파일을 변경할 수 있습니다." });
 
   const r2 = new S3Client({
     region: "auto",
@@ -82,10 +84,11 @@ export default async function handler(request, response) {
       if (!safeKeys.length || safeKeys.length > 1000) {
         return json(response, 400, { error: "삭제할 파일 경로가 올바르지 않습니다." });
       }
-      await r2.send(new DeleteObjectsCommand({
+      const result = await r2.send(new DeleteObjectsCommand({
         Bucket: process.env.R2_BUCKET,
         Delete: { Objects: safeKeys.map((item) => ({ Key: item })), Quiet: true },
       }));
+      if (result.Errors?.length) return json(response, 502, { error: "일부 파일을 삭제하지 못했습니다. 다시 확인해주세요." });
       return json(response, 200, { deleted: safeKeys.length });
     }
 

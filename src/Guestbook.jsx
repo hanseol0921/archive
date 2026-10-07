@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
-import "./Guestbook.css";
+import "./styles/Guestbook.css";
 
 const EMPTY_FORM = { nickname: "", password: "", content: "" };
 

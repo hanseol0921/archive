@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
-import "./Admin.css";
-import "./PhotoLightbox.css";
+import "./styles/Admin.css";
+import "./styles/PhotoLightbox.css";
 import TagPicker from "./TagPicker";
 import { uploadToR2 } from "./r2Storage";
 
@@ -108,7 +108,7 @@ const [mediaOrder, setMediaOrder] = useState([]);
 
         date: postDate || "",
 
-        type: "셀카",
+        type: "",
         hairColor: "",
         tags: "",
         searchTags: "",
@@ -742,6 +742,7 @@ for (
 
         type:
           photo.type,
+        archive_visible: !["스크린샷", "같은사진"].includes(photo.type),
 
         hair_color:
           photo.hairColor,
@@ -1215,9 +1216,7 @@ for (
                   거울셀카
                 </option>
 
-                <option value="그외">
-                  그외
-                </option>
+                <option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
               </select>
 
               <input
@@ -1583,6 +1582,7 @@ for (
                             )
                           }
                         >
+                          <option value="">선택 안됨</option>
                           <option value="셀카">
                             셀카
                           </option>
@@ -1595,9 +1595,7 @@ for (
                             거울셀카
                           </option>
 
-                          <option value="그외">
-                            그외
-                          </option>
+                          <option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
                         </select>
 
                       </div>

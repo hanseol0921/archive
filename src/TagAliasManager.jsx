@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
-import "./TagAliasManager.css";
+import "./styles/TagAliasManager.css";
 
 function TagAliasManager() {
   const [tagAliases, setTagAliases] = useState([]);

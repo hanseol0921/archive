@@ -1,355 +1,191 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
-import "./App.css";
-import "./PhotoLightbox.css";
 import TagPicker from "./TagPicker";
+import { MEDIA_TYPES, UNCLASSIFIED_FILTER } from "./mediaClassification";
+import { videoSourceTags, withVideoSourceTags } from "./videoClassification";
+import { isPendingMedia, managedMediaValues, normalizeManagedMedia, splitMediaTags } from "./mediaManager";
+import "./styles/App.css";
+import "./styles/PhotoLightbox.css";
+import "./styles/PhotoManager.css";
 
 const HAIR_COLORS = ["흑발", "갈발", "금발", "적발", "은발", "핑머", "주머", "와인", "베이지"];
-const PHOTO_TYPES = ["셀카", "남찍사", "거울셀카", "그외"];
-const splitTags = (value) => value.split(",").map((tag) => tag.trim()).filter(Boolean);
-const monthStart = (month) => (month ? `${month}-01` : "");
-function nextMonthStart(month) {
-  if (!month) return "";
+async function readPages(table, configure = (query) => query) {
+  const rows = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await configure(supabase.from(table).select("*")).order("id").range(offset, offset + 499);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < 500) return rows;
+  }
+}
+async function loadManagedMedia(month, unclassified) {
+  const start = `${month}-01`;
   const [year, number] = month.split("-").map(Number);
-  const nextYear = number === 12 ? year + 1 : year;
-  const nextMonth = number === 12 ? 1 : number + 1;
-  return `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+  const end = `${number === 12 ? year + 1 : year}-${String(number === 12 ? 1 : number + 1).padStart(2, "0")}-01`;
+  const [photos, videos] = await Promise.all([
+    readPages("photos", (query) => unclassified ? query.or(UNCLASSIFIED_FILTER) : query.gte("date", start).lt("date", end)),
+    readPages("videos"),
+  ]);
+  const ids = [...new Set([...photos, ...videos].map((row) => row.post_id).filter(Boolean))];
+  const posts = [];
+  for (let offset = 0; offset < ids.length; offset += 100) {
+    const { data, error } = await supabase.from("weverse_posts").select("id,date,content,weverse_url").in("id", ids.slice(offset, offset + 100));
+    if (error) throw error;
+    posts.push(...data);
+  }
+  const postMap = new Map(posts.map((post) => [String(post.id), post]));
+  const rows = [...photos.map((row) => normalizeManagedMedia(row, "photos", postMap.get(String(row.post_id)))),
+    ...videos.map((row) => normalizeManagedMedia(row, "videos", postMap.get(String(row.post_id))))]
+    .filter((row) => unclassified ? isPendingMedia(row) : row.date >= start && row.date < end)
+    .sort((a, b) => b.date.localeCompare(a.date) || Number(a.upload_order || 0) - Number(b.upload_order || 0));
+  return { rows, posts };
 }
 
-function PhotoManager() {
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [photos, setPhotos] = useState([]);
+export default function PhotoManager({ unclassified = false }) {
+  const [selectedMonth, setSelectedMonth] = useState(() => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date()).slice(0, 7));
+  const [rows, setRows] = useState([]);
   const [posts, setPosts] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkHairColor, setBulkHairColor] = useState("");
-  const [bulkPhotoTags, setBulkPhotoTags] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [savingIds, setSavingIds] = useState([]);
-  const [bulkSaving, setBulkSaving] = useState(false);
-  const [bulkTagSaving, setBulkTagSaving] = useState(false);
-  const [savingAll, setSavingAll] = useState(false);
-  const [saveAllProgress, setSaveAllProgress] = useState("");
-  const [largePreview, setLargePreview] = useState(null);
-
-  async function loadPhotos() {
-    const startDate = monthStart(selectedMonth);
-    const followingMonth = nextMonthStart(selectedMonth);
-    if (!startDate || !followingMonth) {
-      alert("조회할 월을 선택해주세요.");
-      return;
+  const [selected, setSelected] = useState([]);
+  const [kind, setKind] = useState("all");
+  const [source, setSource] = useState("all");
+  const [bulkType, setBulkType] = useState("");
+  const [bulkHair, setBulkHair] = useState("");
+  const [bulkTags, setBulkTags] = useState("");
+  const [loading, setLoading] = useState(unclassified);
+  const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState(null);
+  const busy = loading || saving;
+  const title = unclassified ? "미분류 자료 관리" : "업로드 사진·동영상 관리";
+  useEffect(() => {
+    if (!unclassified) return;
+    let cancelled = false;
+    loadManagedMedia("", true).then((result) => { if (!cancelled) { setRows(result.rows); setPosts(result.posts); } })
+      .catch((err) => { if (!cancelled) setError(`자료를 불러오지 못했습니다. ${err.message}`); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [unclassified]);
+  async function load() {
+    if (busy || (!unclassified && !selectedMonth)) return;
+    setLoading(true); setError(""); setNotice("");
+    try { const result = await loadManagedMedia(selectedMonth, unclassified); setRows(result.rows); setPosts(result.posts); setSelected([]); }
+    catch (err) { setError(`자료를 불러오지 못했습니다. ${err.message}`); }
+    finally { setLoading(false); }
+  }
+  const visible = useMemo(() => rows.filter((row) => (kind === "all" || row.table === kind)
+    && (source === "all" || (source === "포스트" ? !videoSourceTags(row).length : videoSourceTags(row).includes(source)))), [rows, kind, source]);
+  const groups = useMemo(() => {
+    const postMap = new Map(posts.map((post) => [String(post.id), post]));
+    const grouped = new Map();
+    for (const row of visible) {
+      const key = row.post_id ? `post:${row.post_id}` : `media:${row.id}`;
+      if (!grouped.has(key)) grouped.set(key, { id: key, post: postMap.get(String(row.post_id)), rows: [] });
+      grouped.get(key).rows.push(row);
     }
-
-    setLoading(true);
+    return [...grouped.values()];
+  }, [visible, posts]);
+  const selectedRows = visible.filter((row) => selected.includes(row.id));
+  const selectedPhotos = selectedRows.filter((row) => row.table === "photos");
+  const edit = (id, field, value) => setRows((current) => current.map((row) => row.id === id
+    ? { ...row, [field]: value, ...(field === "type" && ["스크린샷", "같은사진"].includes(value) ? { archive_visible: false } : {}) } : row));
+  function toggle(ids) {
+    const all = ids.every((id) => selected.includes(id));
+    setSelected((current) => all ? current.filter((id) => !ids.includes(id)) : [...new Set([...current, ...ids])]);
+  }
+  async function saveTargets(targets, getValues, message) {
+    if (busy || !targets.length) return;
+    setSaving(true); setError(""); setNotice("");
+    let completed = 0;
     try {
-      const { data, error } = await supabase.from("photos").select("*")
-        .gte("date", startDate).lt("date", followingMonth)
-        .order("date", { ascending: false })
-        .order("upload_order", { ascending: true }).limit(5000);
-      if (error) throw error;
-
-      const photoRows = (data || []).map((photo) => ({
-        ...photo,
-        tagsText: Array.isArray(photo.tags) ? photo.tags.join(", ") : "",
-        searchTagsText: Array.isArray(photo.search_tags) ? photo.search_tags.join(", ") : "",
-      }));
-      const postIds = [...new Set(photoRows.map((photo) => photo.post_id).filter(Boolean))];
-      let postRows = [];
-      if (postIds.length) {
-        const result = await supabase.from("weverse_posts")
-          .select("id,date,posted_at,content,weverse_url").in("id", postIds);
-        if (result.error) throw result.error;
-        postRows = result.data || [];
-      }
-      setPhotos(photoRows);
-      setPosts(postRows);
-      setSelectedIds([]);
-    } catch (error) {
-      console.error("업로드 사진 조회 오류:", error);
-      alert("사진을 불러오지 못했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const groupedPosts = useMemo(() => {
-    const postMap = new Map(posts.map((post) => [post.id, post]));
-    const groups = new Map();
-    photos.forEach((photo) => {
-      const key = photo.post_id || `photo-${photo.id}`;
-      if (!groups.has(key)) groups.set(key, { id: key, post: postMap.get(photo.post_id) || null, photos: [] });
-      groups.get(key).photos.push(photo);
-    });
-    return [...groups.values()];
-  }, [photos, posts]);
-
-  const selectedPostCount = groupedPosts.filter((group) =>
-    group.photos.some((photo) => selectedIds.includes(photo.id)),
-  ).length;
-
-  function updatePhoto(id, field, value) {
-    setPhotos((current) => current.map((photo) => photo.id === id ? { ...photo, [field]: value } : photo));
-  }
-
-  async function savePhoto(photo) {
-    setSavingIds((current) => [...current, photo.id]);
-    try {
-      const values = {
-        type: photo.type || null,
-        hair_color: photo.hair_color || null,
-        tags: splitTags(photo.tagsText || ""),
-        search_tags: splitTags(photo.searchTagsText || ""),
-        archive_visible: photo.archive_visible !== false,
-        weverse_url: photo.weverse_url || null,
-      };
-      const { error } = await supabase.from("photos").update(values).eq("id", photo.id);
-      if (error) throw error;
-      setPhotos((current) => current.map((item) => item.id === photo.id ? { ...item, ...values } : item));
-    } catch (error) {
-      console.error("사진 설정 저장 오류:", error);
-      alert("사진 설정을 저장하지 못했습니다.");
-    } finally {
-      setSavingIds((current) => current.filter((id) => id !== photo.id));
-    }
-  }
-
-  function photoUpdateValues(photo) {
-    return {
-      type: photo.type || null,
-      hair_color: photo.hair_color || null,
-      tags: splitTags(photo.tagsText || ""),
-      search_tags: splitTags(photo.searchTagsText || ""),
-      archive_visible: photo.archive_visible !== false,
-      weverse_url: photo.weverse_url || null,
-    };
-  }
-
-  async function saveAllPhotos() {
-    if (!photos.length || savingAll) return;
-    if (!window.confirm(`현재 불러온 사진 ${photos.length}장의 설정을 전부 저장할까요?`)) return;
-
-    setSavingAll(true);
-    let savedCount = 0;
-
-    try {
-      for (let index = 0; index < photos.length; index += 200) {
-        const chunk = photos.slice(index, index + 200);
-        const payload = chunk.map((photo) => ({
-          id: String(photo.id),
-          ...photoUpdateValues(photo),
+      for (let offset = 0; offset < targets.length; offset += 8) {
+        const results = await Promise.allSettled(targets.slice(offset, offset + 8).map(async (row) => {
+          const values = getValues(row);
+          const { data, error: writeError } = await supabase.from(row.table).update(values).eq("id", row.originalId).select("*").single();
+          if (writeError) throw writeError;
+          const saved = { ...data, table: row.table };
+          setRows((current) => current.flatMap((item) => item.id !== row.id ? [item]
+            : unclassified && !isPendingMedia(saved) ? [] : [{ ...item, ...values,
+              ...(values.tags ? { tagsText: values.tags.join(", ") } : {}) }]));
+          setSelected((current) => current.filter((id) => id !== row.id));
+          completed += 1;
+          setProgress(`${completed} / ${targets.length}`);
         }));
-
-        const { error } = await supabase.rpc("bulk_update_photo_settings", {
-          settings: payload,
-        });
-        if (error) throw error;
-
-        savedCount += chunk.length;
-        setSaveAllProgress(`${savedCount} / ${photos.length}`);
+        const failure = results.find((result) => result.status === "rejected");
+        if (failure) throw failure.reason;
       }
-
-      alert(`사진 ${savedCount}장의 설정을 저장했습니다.`);
-    } catch (error) {
-      console.error("사진 전체 저장 오류:", error);
-      alert(`${savedCount}장까지 저장한 뒤 오류가 발생했습니다. 다시 누르면 전체를 재저장할 수 있습니다.`);
-    } finally {
-      setSavingAll(false);
-      setSaveAllProgress("");
-    }
+      setNotice(`${completed}개 ${message}`);
+    } catch (err) { setError(`${completed}개 저장 완료. ${err.message}`); }
+    finally { setSaving(false); setProgress(""); }
   }
-
-  function togglePhoto(id) {
-    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
-  }
-
-  function togglePost(group) {
-    const ids = group.photos.map((photo) => photo.id);
-    const allSelected = ids.every((id) => selectedIds.includes(id));
-    setSelectedIds((current) => allSelected ? current.filter((id) => !ids.includes(id)) : [...new Set([...current, ...ids])]);
-  }
-
-  async function applyBulkHairColor() {
-    if (!bulkHairColor || !photos.length) return;
-    const ids = selectedIds.length ? selectedIds : photos.map((photo) => photo.id);
-    const label = selectedIds.length ? `선택한 사진 ${ids.length}장` : `조회한 사진 ${ids.length}장 전체`;
-    if (!window.confirm(`${label}의 머리색을 ${bulkHairColor}(으)로 변경할까요?`)) return;
-    setBulkSaving(true);
-    try {
-      for (let index = 0; index < ids.length; index += 200) {
-        const { error } = await supabase.from("photos").update({ hair_color: bulkHairColor }).in("id", ids.slice(index, index + 200));
-        if (error) throw error;
-      }
-      const idSet = new Set(ids);
-      setPhotos((current) => current.map((photo) => idSet.has(photo.id) ? { ...photo, hair_color: bulkHairColor } : photo));
-    } catch (error) {
-      console.error("머리색 일괄 변경 오류:", error);
-      alert("머리색을 일괄 변경하지 못했습니다.");
-    } finally {
-      setBulkSaving(false);
-    }
-  }
-
-  async function applyBulkTags() {
-    const tagsToAdd = splitTags(bulkPhotoTags);
-    if (!tagsToAdd.length || !photos.length) return;
-
-    const ids = selectedIds.length ? selectedIds : photos.map((photo) => photo.id);
-    const label = selectedIds.length
-      ? `선택한 사진 ${ids.length}장`
-      : `현재 불러온 사진 ${ids.length}장 전체`;
-
-    if (!window.confirm(`${label}에 ${tagsToAdd.join(", ")} 태그를 추가할까요?`)) return;
-
-    setBulkTagSaving(true);
-    try {
-      const { error } = await supabase.rpc("apply_tags_to_photos", {
-        p_photo_ids: ids.map(String),
-        p_tags: tagsToAdd,
-      });
-      if (error) throw error;
-
-      const idSet = new Set(ids.map(String));
-      setPhotos((current) => current.map((photo) => {
-        if (!idSet.has(String(photo.id))) return photo;
-        const merged = [...new Set([...splitTags(photo.tagsText || ""), ...tagsToAdd])];
-        return { ...photo, tags: merged, tagsText: merged.join(", ") };
-      }));
-      setBulkPhotoTags("");
-      alert(`${label}에 태그를 적용했습니다.`);
-    } catch (error) {
-      console.error("사진 태그 일괄 적용 오류:", error);
-      alert("태그를 일괄 적용하지 못했습니다. 갱신된 SQL을 실행했는지 확인해주세요.");
-    } finally {
-      setBulkTagSaving(false);
-    }
-  }
-
-  return (
-    <main className="archive-import-page photo-manager-page">
+  const bulkTargets = selectedRows.length ? selectedRows : visible;
+  const targetLabel = selectedRows.length ? `선택 자료 (${selectedRows.length}개)` : `현재 목록 전체 (${visible.length}개)`;
+  const countLabel = `사진 ${visible.filter((row) => row.table === "photos").length}장 · 동영상 ${visible.filter((row) => row.table === "videos").length}개`;
+  return <main className="archive-import-page photo-manager-page">
+    <aside className="photo-manager-sidebar" aria-label="자료 조회 및 일괄 편집">
       <section className="archive-import-top">
-        <div className="archive-import-header">
-          <button type="button" className="archive-import-back-button" onClick={() => { window.location.href = "/admin"; }}>← 뒤로가기</button>
-          <h1>업로드 사진 관리</h1>
-        </div>
-        <p>업로드된 사진을 월별로 불러와 게시물 단위로 정리합니다.</p>
+        <div className="archive-import-header"><button type="button" className="archive-import-back-button" onClick={() => { window.location.href = "/admin"; }}>← 뒤로가기</button><h1>{title}</h1></div>
+        <p>{unclassified ? "사진은 유형 미선택, 동영상은 머리색·내용 태그 미입력 자료를 모았습니다." : "사진과 동영상을 월별로 불러와 함께 편집합니다."}</p>
         <div className="photo-manager-month-toolbar">
-          <label>조회할 월<input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} /></label>
-          <button type="button" onClick={loadPhotos} disabled={loading || !selectedMonth}>{loading ? "불러오는 중..." : "이달 사진 불러오기"}</button>
+          {!unclassified && <label>조회할 월<input type="month" disabled={busy} value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} /></label>}
+          <div className="media-manager-filters">
+            <label>자료<select disabled={busy} value={kind} onChange={(event) => setKind(event.target.value)}><option value="all">사진·동영상</option><option value="photos">사진</option><option value="videos">동영상</option></select></label>
+            <label>출처<select disabled={busy} value={source} onChange={(event) => setSource(event.target.value)}><option value="all">전체</option>{["포스트", "DM", "모먼트"].map((value) => <option key={value}>{value}</option>)}</select></label>
+          </div>
+          <button type="button" disabled={busy || (!unclassified && !selectedMonth)} onClick={load}>{loading ? "불러오는 중…" : unclassified ? "새로고침" : "이달 자료 불러오기"}</button>
         </div>
       </section>
-
-        <div className="photo-manager-bulk-bar">
-          <span>
-            게시물 {groupedPosts.length}개 · 사진 {photos.length}장 · 선택 게시글 {selectedPostCount}개
-          </span>
-          <select value={bulkHairColor} onChange={(e) => setBulkHairColor(e.target.value)}>
-            <option value="">일괄 머리색 선택</option>
-            {HAIR_COLORS.map((color) => <option value={color} key={color}>{color}</option>)}
-          </select>
-          <button type="button" onClick={applyBulkHairColor} disabled={bulkSaving || !photos.length || !bulkHairColor}>
-            {bulkSaving
-              ? "변경 중..."
-              : selectedIds.length
-                ? `선택 게시글 머리색 적용 (${selectedIds.length}장)`
-                : "이달 게시글 전체 머리색 적용"}
-          </button>
-          <div className="photo-manager-bulk-tags">
-            <TagPicker
-              value={bulkPhotoTags}
-              onChange={setBulkPhotoTags}
-              placeholder="일괄 추가할 태그"
-            />
-          </div>
-          <button type="button" onClick={applyBulkTags} disabled={bulkTagSaving || !photos.length || !bulkPhotoTags}>
-            {bulkTagSaving
-              ? "태그 적용 중..."
-              : selectedIds.length
-                ? `선택 게시글 태그 적용 (${selectedIds.length}장)`
-                : "이달 게시글 전체 태그 적용"}
-          </button>
-          <button type="button" onClick={saveAllPhotos} disabled={savingAll || bulkSaving || !photos.length}>
-            {savingAll ? `전체 저장 중 ${saveAllProgress}` : "전체 설정 저장"}
-          </button>
+      <div className="photo-manager-bulk-bar">
+        <div className="photo-manager-bulk-heading"><strong>일괄 편집</strong><span>{selectedRows.length}개 선택</span><button disabled={busy || !visible.length} onClick={() => setSelected([...new Set([...selected, ...visible.map((row) => row.id)])])}>전체 선택</button><button disabled={busy || !selected.length} onClick={() => setSelected([])}>선택 해제</button></div>
+        <span>{countLabel}</span>
+        <div className="photo-manager-bulk-type"><select aria-label="일괄 사진 유형" disabled={busy} value={bulkType} onChange={(event) => setBulkType(event.target.value)}><option value="">사진 유형 선택</option><option value="unset">선택 안됨</option>{MEDIA_TYPES.map((type) => <option key={type}>{type}</option>)}</select>
+          <button disabled={busy || !bulkType || !selectedPhotos.length} onClick={() => saveTargets(selectedPhotos, (row) => ({ type: bulkType === "unset" ? null : bulkType, tags: withVideoSourceTags(row).tags, ...(["스크린샷", "같은사진"].includes(bulkType) ? { archive_visible: false } : {}) }), "사진 유형을 저장했습니다.")}>유형 적용 ({selectedPhotos.length}장)</button></div>
+        <div className="photo-manager-bulk-field">
+        <select aria-label="일괄 머리색" disabled={busy} value={bulkHair} onChange={(event) => setBulkHair(event.target.value)}><option value="">머리색 선택</option>{HAIR_COLORS.map((color) => <option key={color}>{color}</option>)}</select>
+        <button title={`${targetLabel} 머리색 적용`} disabled={busy || !bulkHair || !bulkTargets.length} onClick={() => saveTargets(bulkTargets, () => ({ hair_color: bulkHair }), "머리색을 저장했습니다.")}>{selectedRows.length ? "선택 머리색 적용" : "전체 머리색 적용"}</button>
         </div>
-
-      <div className="archive-draft-list photo-manager-post-list">
-        {groupedPosts.map((group) => (
-          <section className="archive-draft-card" key={group.id}>
-            <div className="archive-draft-header">
-              <div>
-                <strong>{group.post?.date || group.photos[0]?.date || "날짜 없음"}</strong>
-                {group.post?.content && <div className="archive-draft-path photo-manager-content">{group.post.content}</div>}
-              </div>
-              <label className="photo-manager-post-select">
-                <input type="checkbox" checked={group.photos.every((photo) => selectedIds.includes(photo.id))} onChange={() => togglePost(group)} />
-                이 게시물 {group.photos.length}장 전체 선택
-              </label>
-            </div>
-            <div className="archive-import-media-list">
-              {group.photos.map((photo, index) => (
-                <div className="archive-import-media" key={photo.id}>
-                  <button
-                    type="button"
-                    className="archive-import-media-preview photo-preview-button"
-                    onClick={() => setLargePreview({
-                      src: photo.image_url || photo.thumbnail_url,
-                      name: `${group.post?.date || photo.date || ""} 사진 ${index + 1}`,
-                    })}
-                    aria-label={`${index + 1}번 사진 크게 보기`}
-                  >
-                    <img src={photo.thumbnail_url || photo.image_url} alt="" />
-                    <span>크게 보기</span>
-                  </button>
-                  <div className="archive-import-media-info">
-                    <strong>{index + 1}. 사진</strong>
-                    <span>{photo.date || ""}</span>
-                    <label className="photo-manager-photo-select"><input type="checkbox" checked={selectedIds.includes(photo.id)} onChange={() => togglePhoto(photo.id)} />선택</label>
-                    <select value={photo.type || ""} onChange={(e) => updatePhoto(photo.id, "type", e.target.value)}>
-                      <option value="">사진 유형</option>{PHOTO_TYPES.map((type) => <option value={type} key={type}>{type}</option>)}
-                    </select>
-                    <select value={photo.hair_color || ""} onChange={(e) => updatePhoto(photo.id, "hair_color", e.target.value)}>
-                      <option value="">머리색 선택</option>{HAIR_COLORS.map((color) => <option value={color} key={color}>{color}</option>)}
-                    </select>
-                    <label className="archive-visible-toggle import-visible-toggle">
-                      <input type="checkbox" checked={photo.archive_visible !== false} onChange={(e) => updatePhoto(photo.id, "archive_visible", e.target.checked)} />사진 아카이브에 표시
-                    </label>
-                    <TagPicker value={photo.tagsText} onChange={(value) => updatePhoto(photo.id, "tagsText", value)} />
-                    <small>검색용 태그는 태그 관리에서 일괄 수정됩니다.</small>
-                    <input type="url" placeholder="위버스 링크" value={photo.weverse_url || ""} onChange={(e) => updatePhoto(photo.id, "weverse_url", e.target.value)} />
-                    <button type="button" onClick={() => savePhoto(photo)} disabled={savingIds.includes(photo.id)}>{savingIds.includes(photo.id) ? "저장 중..." : "이 사진 설정 저장"}</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
+        <div className="photo-manager-bulk-tags"><TagPicker disabled={busy} value={bulkTags} onChange={setBulkTags} placeholder="일괄 추가할 태그" /></div>
+        <button title={`${targetLabel} 태그 적용`} disabled={busy || !splitMediaTags(bulkTags).length || !bulkTargets.length} onClick={() => saveTargets(bulkTargets, (row) => ({ tags: withVideoSourceTags({ ...row, tags: [...new Set([...splitMediaTags(row.tagsText), ...splitMediaTags(bulkTags)])] }).tags }), "태그를 적용했습니다.")}>{selectedRows.length ? `선택 태그 적용 (${selectedRows.length}개)` : "전체 태그 적용"}</button>
+        <button disabled={busy || !visible.length} onClick={() => saveTargets(visible, managedMediaValues, "설정을 저장했습니다.")}>{saving ? `저장 중 ${progress}` : "전체 설정 저장"}</button>
       </div>
-      {largePreview && (
-        <div
-          className="photo-lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label={largePreview.name}
-          onMouseDown={() => setLargePreview(null)}
-        >
-          <button
-            type="button"
-            className="photo-lightbox-close"
-            aria-label="큰 사진 닫기"
-            onClick={() => setLargePreview(null)}
-          >
-            ×
-          </button>
-          <img
-            src={largePreview.src}
-            alt={largePreview.name}
-            onMouseDown={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
-    </main>
-  );
+      {notice && <p className="photo-manager-notice" role="status">{notice}</p>}{error && <p className="photo-manager-error" role="alert">{error}</p>}
+    </aside>
+    <section className="photo-manager-workspace" aria-label="편집할 자료 목록">
+      <header className="photo-manager-workspace-heading"><h2>자료 편집</h2><span>{countLabel} · {selectedRows.length}개 선택</span></header>
+      {!visible.length && <p className="photo-manager-empty">{loading ? "자료를 불러오는 중…" : unclassified ? "미분류 자료가 없습니다." : "왼쪽에서 조회할 월을 선택하고 자료를 불러와주세요."}</p>}
+      <div className="archive-draft-list photo-manager-post-list">
+        {groups.map((group) => <section className={`archive-draft-card photo-manager-post-group ${group.rows.length > 1 ? "has-multiple-photos" : ""}`} key={group.id}>
+          <div className="archive-draft-header"><div><strong>{group.post?.date || group.rows[0].date || "날짜 없음"}</strong>{group.post?.content && <div className="archive-draft-path photo-manager-content">{group.post.content}</div>}</div>
+            {group.rows.length > 1 && <label className="photo-manager-post-select"><input type="checkbox" disabled={busy} checked={group.rows.every((row) => selected.includes(row.id))} ref={(element) => { if (element) element.indeterminate = group.rows.some((row) => selected.includes(row.id)) && !group.rows.every((row) => selected.includes(row.id)); }} onChange={() => toggle(group.rows.map((row) => row.id))} />전체선택</label>}</div>
+          <div className="archive-import-media-list">{group.rows.map((row, index) => {
+            const photo = row.table === "photos";
+            const label = photo ? "사진" : "동영상";
+            const crop = (row.crop_position || "50% 50%").split(" ");
+            return <article className={`archive-import-media ${selected.includes(row.id) ? "is-selected" : ""}`} key={row.id}>
+              <div className="photo-manager-card-heading"><label className="photo-manager-card-select" title="일괄 편집 대상으로 선택"><input type="checkbox" aria-label={`${row.date} ${index + 1}번 ${label} 편집 선택`} disabled={busy} checked={selected.includes(row.id)} onChange={() => toggle([row.id])} /></label></div>
+              <button type="button" className="archive-import-media-preview photo-preview-button" aria-label={`${index + 1}번 ${label} 크게 보기`} onClick={() => setPreview(row)}>
+                {row.thumbnail_url || row.image_url ? <img src={row.thumbnail_url || row.image_url} alt="" loading="lazy" decoding="async" style={{ objectPosition: row.crop_position || "50% 50%" }} /> : <span className="media-manager-video-placeholder">▶ 동영상 재생</span>}
+                <span>{photo ? "크게 보기" : "▶ 동영상 재생"}</span>
+              </button>
+              <small className="media-manager-source">{label} · {videoSourceTags(row).join(" · ") || "포스트"}</small>
+              <fieldset className="archive-import-media-info" disabled={busy}>
+                {photo && <select aria-label="사진 유형" value={row.type && MEDIA_TYPES.includes(row.type) ? row.type : ""} onChange={(event) => edit(row.id, "type", event.target.value)}><option value="">선택 안됨</option>{MEDIA_TYPES.map((type) => <option key={type}>{type}</option>)}</select>}
+                <select aria-label="머리색" value={row.hair_color || ""} onChange={(event) => edit(row.id, "hair_color", event.target.value)}><option value="">머리색 선택</option>{HAIR_COLORS.map((color) => <option key={color}>{color}</option>)}</select>
+                {photo && <label className="archive-visible-toggle import-visible-toggle"><input type="checkbox" disabled={["스크린샷", "같은사진"].includes(row.type)} checked={!["스크린샷", "같은사진"].includes(row.type) && row.archive_visible !== false} onChange={(event) => edit(row.id, "archive_visible", event.target.checked)} />아카이브 표시</label>}
+                <TagPicker disabled={busy} value={row.tagsText} onChange={(value) => edit(row.id, "tagsText", value)} />
+                {unclassified ? <input aria-label="검색용 태그" placeholder="검색용 태그 (쉼표로 구분)" value={row.searchTagsText} onChange={(event) => edit(row.id, "searchTagsText", event.target.value)} /> : <small>검색용 태그는 태그 관리에서 일괄 수정됩니다.</small>}
+                {photo ? <input type="url" aria-label="위버스 링크" placeholder="위버스 링크" value={row.weverse_url || ""} onChange={(event) => edit(row.id, "weverse_url", event.target.value)} />
+                  : group.post?.weverse_url && <a className="media-manager-post-link" href={group.post.weverse_url} target="_blank" rel="noreferrer">위버스에서 보기 ↗</a>}
+                {photo && <details className="media-manager-crop"><summary>미리보기 위치</summary>{["가로", "세로"].map((axis, axisIndex) => <label key={axis}>{axis}<input type="range" min="0" max="100" value={parseFloat(crop[axisIndex]) || 0} onChange={(event) => { const next = [...crop]; next[axisIndex] = `${event.target.value}%`; edit(row.id, "crop_position", next.join(" ")); }} /></label>)}</details>}
+                <button type="button" onClick={() => saveTargets([row], managedMediaValues, "설정을 저장했습니다.")}>이 {label} 설정 저장</button>
+              </fieldset>
+            </article>;
+          })}</div>
+        </section>)}
+      </div>
+    </section>
+    {preview && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label="자료 미리보기" onMouseDown={() => setPreview(null)}><button type="button" className="photo-lightbox-close" aria-label="미리보기 닫기" onClick={() => setPreview(null)}>×</button>
+      {preview.table === "photos" ? <img src={preview.image_url} alt="사진 미리보기" onMouseDown={(event) => event.stopPropagation()} /> : <video key={preview.id} src={preview.video_url} poster={preview.thumbnail_url || undefined} controls playsInline preload="metadata" onMouseDown={(event) => event.stopPropagation()} />}</div>}
+  </main>;
 }
-
-export default PhotoManager;

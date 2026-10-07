@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "./supabaseClient";
-import "./App.css";
+import "./styles/App.css";
 import ContentReport from "./ContentReport";
+import "./styles/ArchiveLayout.css";
+import notebookRing from "./assets/notebook-ring.png";
 
 // 재생목록에 곡을 추가하려면 아래 배열에 같은 형식으로 한 줄씩 넣으면 됩니다.
 const DEFAULT_BGM_PLAYLIST = [
@@ -13,10 +16,33 @@ const DEFAULT_BGM_PLAYLIST = [
 ];
 
 const DEFAULT_SITE_COPY = {
+  todayStatus: "",
   archiveTitle: "링링일기",
   profileMessageTitle: "링링의 한 마디",
   profileMessage: "하이류~~~",
 };
+
+let cachedProfileImage = "";
+let cachedSiteCopy = null;
+let cachedVisitorCounts = null;
+
+try {
+  cachedProfileImage = sessionStorage.getItem("riwoo_profile_image") || "";
+  const savedSiteCopy = sessionStorage.getItem("riwoo_site_copy");
+  cachedSiteCopy = savedSiteCopy ? JSON.parse(savedSiteCopy) : null;
+} catch {
+  // 저장소를 사용할 수 없는 브라우저에서도 메모리 캐시는 그대로 사용한다.
+}
+
+function rememberProfileImage(value) {
+  cachedProfileImage = value || "";
+  try { sessionStorage.setItem("riwoo_profile_image", cachedProfileImage); } catch { /* noop */ }
+}
+
+function rememberSiteCopy(value) {
+  cachedSiteCopy = value;
+  try { sessionStorage.setItem("riwoo_site_copy", JSON.stringify(value)); } catch { /* noop */ }
+}
 
 function getYoutubeVideoId(url) {
   try {
@@ -620,26 +646,42 @@ function ArchiveLayout({
 
   // 사진 / 동영상에 따라 placeholder만 변경 가능
   searchPlaceholder = "사진이나 키워드를 검색해보세요",
+  sidebarContent,
 
   // 이 안에 사진 그리드 / 동영상 그리드가 들어감
   children,
 }) {
-  const [visitorCounts, setVisitorCounts] = useState({ today: 0, total: 0 });
-  const [profileImage, setProfileImage] = useState("");
+  const pageRef = useRef(null);
+
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page) return undefined;
+    // The desktop design is 1270 × 890 including the header and side tabs.
+    // Measure the space inside the page padding so both axes always fit.
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      const scale = Math.min(1, width / 1270, height / 820);
+      page.style.setProperty("--archive-scale", String(Math.max(0.01, scale)));
+    });
+    observer.observe(page);
+    return () => observer.disconnect();
+  }, []);
+
+  const [visitorCounts, setVisitorCounts] = useState(() => cachedVisitorCounts);
+  const [profileImage, setProfileImage] = useState(() => cachedProfileImage);
   const [uploadingProfile, setUploadingProfile] = useState(false);
-  const [recentUpdateDate, setRecentUpdateDate] = useState("");
   const [bgmPlaylist, setBgmPlaylist] = useState(DEFAULT_BGM_PLAYLIST);
   const [savingBgmPlaylist, setSavingBgmPlaylist] = useState(false);
   const [generalReportOpen, setGeneralReportOpen] = useState(false);
-  const [siteCopy, setSiteCopy] = useState({
+  const [siteCopy, setSiteCopy] = useState(() => cachedSiteCopy || {
     archiveTitle: "",
     profileMessageTitle: "",
     profileMessage: "",
   });
-  const [siteCopyDraft, setSiteCopyDraft] = useState(DEFAULT_SITE_COPY);
+  const [siteCopyDraft, setSiteCopyDraft] = useState(() => cachedSiteCopy || DEFAULT_SITE_COPY);
   const [siteCopyEditorOpen, setSiteCopyEditorOpen] = useState(false);
   const [savingSiteCopy, setSavingSiteCopy] = useState(false);
-  const [siteCopyLoaded, setSiteCopyLoaded] = useState(false);
+  const [siteCopyLoaded, setSiteCopyLoaded] = useState(() => Boolean(cachedSiteCopy));
 
   useEffect(() => {
     let cancelled = false;
@@ -648,7 +690,7 @@ function ArchiveLayout({
       const { data, error } = await supabase
         .from("site_settings")
         .select("key, value")
-        .in("key", ["archive_title", "profile_message_title", "profile_message"]);
+        .in("key", ["archive_title", "profile_message_title", "profile_message", "profile_today_status"]);
 
       if (error) {
         console.error("사이트 문구를 불러오지 못했습니다:", error);
@@ -662,6 +704,7 @@ function ArchiveLayout({
 
       const values = Object.fromEntries((data || []).map((row) => [row.key, row.value]));
       const nextCopy = {
+        todayStatus: values.profile_today_status || "",
         archiveTitle: values.archive_title || DEFAULT_SITE_COPY.archiveTitle,
         profileMessageTitle:
           values.profile_message_title || DEFAULT_SITE_COPY.profileMessageTitle,
@@ -669,6 +712,7 @@ function ArchiveLayout({
       };
 
       if (!cancelled) {
+        rememberSiteCopy(nextCopy);
         setSiteCopy(nextCopy);
         setSiteCopyDraft(nextCopy);
         setSiteCopyLoaded(true);
@@ -683,6 +727,7 @@ function ArchiveLayout({
     event.preventDefault();
 
     const nextCopy = {
+      todayStatus: (siteCopyDraft.todayStatus || "").trim().slice(0, 40),
       archiveTitle: siteCopyDraft.archiveTitle.trim() || DEFAULT_SITE_COPY.archiveTitle,
       profileMessageTitle:
         siteCopyDraft.profileMessageTitle.trim() || DEFAULT_SITE_COPY.profileMessageTitle,
@@ -694,6 +739,7 @@ function ArchiveLayout({
       const updatedAt = new Date().toISOString();
       const { error } = await supabase.from("site_settings").upsert(
         [
+          { key: "profile_today_status", value: nextCopy.todayStatus, updated_at: updatedAt },
           { key: "archive_title", value: nextCopy.archiveTitle, updated_at: updatedAt },
           {
             key: "profile_message_title",
@@ -706,6 +752,7 @@ function ArchiveLayout({
       );
 
       if (error) throw error;
+      rememberSiteCopy(nextCopy);
       setSiteCopy(nextCopy);
       setSiteCopyDraft(nextCopy);
       setSiteCopyEditorOpen(false);
@@ -803,7 +850,9 @@ function ArchiveLayout({
         return;
       }
 
-      setProfileImage(data?.value || "");
+      const nextProfileImage = data?.value || "";
+      rememberProfileImage(nextProfileImage);
+      setProfileImage(nextProfileImage);
     }
 
     // =========================
@@ -866,6 +915,7 @@ function ArchiveLayout({
           throw settingError;
         }
 
+        rememberProfileImage(newProfileImage);
         setProfileImage(newProfileImage);
 
         // 기존 프로필 이미지 삭제
@@ -933,36 +983,6 @@ function ArchiveLayout({
   }, []);
 
   useEffect(() => {
-    async function loadRecentUpdateDate() {
-      const tables = ["photos", "videos", "weverse_posts"];
-
-      const results = await Promise.all(
-        tables.map(async (table) => {
-          const { data, error } = await supabase
-            .from(table)
-            .select("date")
-            .not("date", "is", null)
-            .order("date", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (error) {
-            console.error(`${table} 최근 업데이트 날짜 조회 오류:`, error);
-            return "";
-          }
-
-          return data?.date || "";
-        }),
-      );
-
-      const latestDate = results.filter(Boolean).sort().at(-1) || "";
-      setRecentUpdateDate(latestDate);
-    }
-
-    loadRecentUpdateDate();
-  }, []);
-
-  useEffect(() => {
     async function registerVisitor() {
       try {
         let visitorId = localStorage.getItem("riwoo_visitor_id");
@@ -981,10 +1001,11 @@ function ArchiveLayout({
         if (error) throw error;
 
         const counts = Array.isArray(data) ? data[0] : data;
-        setVisitorCounts({
+        cachedVisitorCounts = {
           today: Number(counts?.today_count) || 0,
           total: Number(counts?.total_count) || 0,
-        });
+        };
+        setVisitorCounts(cachedVisitorCounts);
       } catch (error) {
         console.error("방문자 수를 불러오지 못했습니다:", error);
       }
@@ -1009,7 +1030,9 @@ function ArchiveLayout({
       return;
     }
 
-    setProfileImage(data?.value || "");
+    const nextProfileImage = data?.value || "";
+    rememberProfileImage(nextProfileImage);
+    setProfileImage(nextProfileImage);
   }
 
   // =========================
@@ -1067,6 +1090,7 @@ function ArchiveLayout({
         throw settingError;
       }
 
+      rememberProfileImage(newProfileImage);
       setProfileImage(newProfileImage);
     } catch (error) {
       console.error("프로필 사진 변경 오류:", error);
@@ -1081,8 +1105,12 @@ function ArchiveLayout({
   // 탭 이동
   // =========================
 
+  function goHome() {
+    navigateInsideArchive(isAdmin ? "/admin/home" : "/");
+  }
+
   function goPhotos() {
-    navigateInsideArchive(isAdmin ? "/admin" : "/");
+    navigateInsideArchive(isAdmin ? "/admin" : "/photos");
   }
 
   function goVideos() {
@@ -1106,32 +1134,19 @@ function ArchiveLayout({
   // =========================
 
   return (
-    <div className="page">
+    <div className="page" ref={pageRef}>
       <div className="archive">
         {/* =========================
             공통 상단
         ========================= */}
 
-        <header className="top">
-          {/* 공통 검색창 */}
-          <div className="search-box">
-            <span>⌕</span>
-
-            <input
-              type="text"
-              name={`archive_content_search_${activeTab}`}
-              autoComplete="one-time-code"
-              role="searchbox"
-              data-lpignore="true"
-              data-1p-ignore="true"
-              placeholder={searchPlaceholder}
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-            />
-          </div>
-
+        {createPortal(<header className="archive-global-toolbar">
           {!isAdmin && (
-            <button type="button" className="archive-report-button" onClick={() => setGeneralReportOpen(true)}>
+            <button
+              type="button"
+              className="archive-report-button"
+              onClick={() => setGeneralReportOpen(true)}
+            >
               자료 누락 제보
             </button>
           )}
@@ -1163,16 +1178,6 @@ function ArchiveLayout({
 
               <button
                 type="button"
-                className="add-photo-button"
-                onClick={() => {
-                  window.location.href = "/admin/import";
-                }}
-              >
-                + 백업 폴더 가져오기
-              </button>
-
-              <button
-                type="button"
                 className="logout-button"
                 onClick={async () => {
                   await supabase.auth.signOut();
@@ -1184,18 +1189,23 @@ function ArchiveLayout({
               </button>
             </div>
           )}
-        </header>
+        </header>, document.body)}
+        <div className="archive-toolbar-space" aria-hidden="true" />
 
         {/* =========================
             공통 메인 프레임
         ========================= */}
 
-        <div className="blue-frame">
+        <div className="main-frame">
           <div className="archive-book-heading">
             <div className="archive-visitor-counter">
-              <span>TODAY <strong>{visitorCounts.today}</strong></span>
+              <span>
+                TODAY <strong>{visitorCounts?.today ?? "—"}</strong>
+              </span>
               <i>|</i>
-              <span>TOTAL <strong>{visitorCounts.total}</strong></span>
+              <span>
+                TOTAL <strong>{visitorCounts?.total ?? "—"}</strong>
+              </span>
             </div>
 
             <div className="archive-book-title">
@@ -1220,6 +1230,12 @@ function ArchiveLayout({
           ========================= */}
 
           <aside className="profile">
+            {sidebarContent ?? <>
+            <div className="profile-today-status">
+              <strong>TODAY IS...</strong>
+              {isAdmin ? <button type="button" aria-label="TODAY IS 상태 수정" title="이모지·상태 수정" onClick={() => { setSiteCopyDraft(siteCopy); setSiteCopyEditorOpen(true); }}>{siteCopy.todayStatus || "상태 입력"}</button>
+                : <span>{siteCopy.todayStatus || "\u00a0"}</span>}
+            </div>
             <div className="profile-image">
               {profileImage ? (
                 <img src={profileImage} alt="프로필" />
@@ -1242,36 +1258,12 @@ function ArchiveLayout({
               )}
             </div>
 
-            <div className="profile-name">
-              {siteCopyLoaded ? siteCopy.profileMessageTitle : "\u00a0"}
-            </div>
-
             <div className="profile-text">
               {siteCopyLoaded ? siteCopy.profileMessage : "\u00a0"}
             </div>
 
             <div className="profile-line" />
-
-            {recentUpdateDate && (
-              <div
-                className="profile-recent-update"
-                style={{
-                  marginTop: "22px",
-                  color: "#999288",
-                  fontSize: "9px",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                최근 업데이트{" "}
-                <strong style={{ color: "#666158", fontWeight: 600 }}>
-                  {(() => {
-                    const [, month, day] = recentUpdateDate.split("-");
-                    return `${Number(month)}월 ${Number(day)}일`;
-                  })()}
-                </strong>
-              </div>
-            )}
-
+            </>}
           </aside>
 
           {isAdmin && siteCopyEditorOpen && (
@@ -1298,6 +1290,11 @@ function ArchiveLayout({
                 </div>
 
                 <label>
+                  <span>TODAY IS 상태 · 이모지</span>
+                  <input value={siteCopyDraft.todayStatus || ""} maxLength={40} placeholder="예: 🐥 행복한 하루" onChange={(event) => setSiteCopyDraft((current) => ({ ...current, todayStatus: event.target.value }))} />
+                </label>
+
+                <label>
                   <span>상단 제목</span>
                   <input
                     value={siteCopyDraft.archiveTitle}
@@ -1306,20 +1303,6 @@ function ArchiveLayout({
                       setSiteCopyDraft((current) => ({
                         ...current,
                         archiveTitle: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-
-                <label>
-                  <span>한마디 제목</span>
-                  <input
-                    value={siteCopyDraft.profileMessageTitle}
-                    maxLength={40}
-                    onChange={(event) =>
-                      setSiteCopyDraft((current) => ({
-                        ...current,
-                        profileMessageTitle: event.target.value,
                       }))
                     }
                   />
@@ -1362,13 +1345,13 @@ function ArchiveLayout({
 
           <div className="notebook-rings">
             <div className="ring-group top-rings">
-              <div className="notebook-ring" />
-              <div className="notebook-ring" />
+              <img src={notebookRing} className="notebook-ring" alt="" />
+              <img src={notebookRing} className="notebook-ring" alt="" />
             </div>
 
             <div className="ring-group bottom-rings">
-              <div className="notebook-ring" />
-              <div className="notebook-ring" />
+              <img src={notebookRing} className="notebook-ring" alt="" />
+              <img src={notebookRing} className="notebook-ring" alt="" />
             </div>
           </div>
 
@@ -1382,6 +1365,14 @@ function ArchiveLayout({
             ========================= */}
 
             <div className="archive-side-tabs">
+              <button
+                type="button"
+                className={`archive-side-tab ${activeTab === "home" ? "active" : ""}`}
+                onClick={goHome}
+              >
+                홈
+              </button>
+
               <button
                 type="button"
                 className={`archive-side-tab ${
@@ -1401,6 +1392,9 @@ function ArchiveLayout({
               >
                 동영상
               </button>
+
+              {isAdmin && <button type="button" className={`archive-side-tab ${activeTab === 'dm' ? 'active' : ''}`}
+                onClick={() => navigateInsideArchive('/admin/dm')}>DM</button>}
 
               <button
                 type="button"
@@ -1434,6 +1428,8 @@ function ArchiveLayout({
                 </button>
               )}
 
+              {isAdmin && <button type="button" className={`archive-side-tab ${activeTab === "settings" ? "active" : ""}`} onClick={() => navigateInsideArchive("/admin/settings")}>설정</button>}
+
               <div className="mobile-tab-search">
                 <span>⌕</span>
                 <input
@@ -1449,6 +1445,7 @@ function ArchiveLayout({
                 />
               </div>
             </div>
+            {/* 공통 검색창 */}
 
             {/* =========================
                 페이지마다 바뀌는 부분
@@ -1459,12 +1456,16 @@ function ArchiveLayout({
         </div>
       </div>
       <ContentReport
-        target={generalReportOpen ? {
-          type: "archive",
-          id: activeTab,
-          label: `${activeTab} 탭 자료 누락·수정 요청`,
-          pageUrl: window.location.href,
-        } : null}
+        target={
+          generalReportOpen
+            ? {
+                type: "archive",
+                id: activeTab,
+                label: `${activeTab} 탭 자료 누락·수정 요청`,
+                pageUrl: window.location.href,
+              }
+            : null
+        }
         onClose={() => setGeneralReportOpen(false)}
       />
     </div>

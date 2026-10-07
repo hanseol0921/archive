@@ -1,0 +1,449 @@
+/* =========================
+   동영상 아카이브
+========================= */
+.video-content {
+  position: relative;
+}
+/* =========================
+   동영상 상단
+========================= */
+.video-archive-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 3px 5px 12px;
+  border-bottom: 1px solid #ded9d0;
+}
+.video-archive-small {
+  margin-bottom: 4px;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: #aaa398;
+}
+.video-archive-title {
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: #625e57;
+}
+.video-total {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #999288;
+}
+/* =========================
+   동영상 그리드
+========================= */
+.video-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 2px;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.video-grid::-webkit-scrollbar {
+  width: 7px;
+}
+.video-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+.video-grid::-webkit-scrollbar-thumb {
+  background: #bdbdbd;
+  border-radius: 10px;
+}
+/* =========================
+   동영상 카드
+========================= */
+.video-card {
+  min-width: 0;
+  width: 100%;
+  aspect-ratio: 0.7;
+  align-self: start;
+  background: #ffffff;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+/* =========================
+   영상 미리보기
+========================= */
+.video-preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  overflow: hidden;
+  background: #111111;
+}
+.video-preview video,
+.video-preview img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+/* =========================
+   영상 정보
+========================= */
+.video-info {
+  display: none;
+}
+.video-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #625e57;
+}
+.video-time {
+  font-size: 12px;
+  font-weight: normal;
+  color: #aaa398;
+}
+/* =========================
+   연결 게시글 본문
+========================= */
+.video-post-text {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #777268;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* =========================
+   영상 카드 하단
+========================= */
+.video-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #ded9d0;
+  font-size: 12px;
+  color: #aaa398;
+}
+.video-card-footer a {
+  color: #777268;
+  text-decoration: none;
+}
+.video-card-footer a:hover {
+  text-decoration: underline;
+}
+/* =========================
+   동영상 없음
+========================= */
+.video-empty {
+  grid-column: 1 / -1;
+  padding: 50px 0;
+  text-align: center;
+  font-size: 12px;
+  color: #aaa398;
+}
+.video-type {
+  display: inline-block;
+  margin-top: 7px;
+  padding: 2px 5px;
+  border: 1px solid #ded9d0;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #8d877d;
+}
+/* 동영상 하단: 다운로드 + 위버스 링크 */
+.video-card-footer {
+  gap: 8px;
+}
+.video-card-footer .media-download-button {
+  flex-shrink: 0;
+}
+/* =========================
+   동영상 상세 모달
+========================= */
+.video-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(30, 30, 30, 0.55);
+  backdrop-filter: blur(2px);
+}
+.video-modal-content {
+  position: relative;
+  width: min(720px, calc(100vw - 48px));
+  height: min(640px, calc(100vh - 48px));
+  display: flex;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.25);
+}
+.video-modal-player {
+  position: relative;
+  width: auto;
+  height: 100%;
+  aspect-ratio: 9 / 16;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #111111;
+}
+.video-modal-background {
+  position: absolute;
+  inset: -24px;
+  width: calc(100% + 48px);
+  height: calc(100% + 48px);
+  object-fit: cover;
+  filter: blur(18px) brightness(0.48);
+  transform: scale(1.12);
+  opacity: 0.9;
+  pointer-events: none;
+}
+.video-modal-main {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.video-modal-info {
+  flex: 1;
+  min-width: 0;
+  padding: 42px 20px 22px;
+  overflow-y: auto;
+}
+.video-thumbnail-editor {
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #ded9d0;
+}
+.video-thumbnail-editor-title {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #625e57;
+}
+.video-thumbnail-editor input[type="range"] {
+  width: 100%;
+  height: 18px;
+  padding: 0;
+  cursor: pointer;
+}
+.video-thumbnail-editor-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8d877d;
+}
+.video-thumbnail-editor-bottom button {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid #111111;
+  background: #ffffff;
+  color: #55514a;
+  font-size: 12px;
+  cursor: pointer;
+}
+.video-thumbnail-editor-bottom button:hover:not(:disabled) {
+  background: #111111;
+  color: #ffffff;
+}
+.video-thumbnail-editor-bottom button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* 동영상 상세 정보는 사진 상세창과 같은 일반 텍스트 메타 형식 */
+.video-modal-info .modal-meta {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.video-detail-editor {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+.video-detail-editor label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+.video-detail-editor input, .video-detail-editor select {
+  width: 100%;
+  min-height: 32px;
+}
+.video-detail-editor-actions, .video-admin-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+}
+.video-modal-info .modal-tags .tag {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  .video-modal {
+    padding: 16px;
+  }
+  .video-modal-content {
+    width: min(360px, calc(100vw - 32px));
+    height: auto;
+    max-height: calc(100vh - 32px);
+    flex-direction: column;
+  }
+  .video-modal-player {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 9 / 16;
+    max-height: 70vh;
+  }
+  .video-modal-info {
+    padding: 16px;
+  }
+}
+@media (max-width: 800px) {
+  .video-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+}
+/* 사진 상세창과 같은 세로형 상세 패널 */
+.video-detail-panel.video-modal-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 1fr);
+  grid-template-rows: 44px minmax(0, 1fr);
+  width: min(840px, calc(100vw - 32px));
+  height: min(780px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+}
+.video-detail-panel .video-detail-header {
+  grid-column: 1 / -1;
+}
+.video-detail-panel .video-modal-player {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+  background: #171717;
+}
+.video-detail-panel .video-modal-info {
+  min-height: 0;
+  max-height: none;
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  text-align: left;
+  border-left: 1px solid #eee8e0;
+}
+.video-detail-panel .video-date {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #777268;
+}
+.video-detail-panel .modal-meta {
+  font-size: 13px;
+  color: #8d877d;
+  margin-bottom: 8px;
+}
+.video-detail-panel .modal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.video-detail-panel .modal-tags .tag {
+  padding: 6px 9px;
+  border: 1px solid #e7e1d9;
+  border-radius: 5px;
+  background: #fffaf4;
+  text-decoration: none;
+  font-size: 13px;
+  color: #756958;
+}
+.video-detail-panel .video-thumbnail-editor {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #e7e1d9;
+  border-radius: 6px;
+  background: #fffaf4;
+}
+.video-thumbnail-editor summary {
+  font-size: 13px;
+  color: #756958;
+  cursor: pointer;
+}
+.video-thumbnail-editor[open] summary {
+  margin-bottom: 12px;
+}
+.video-detail-panel .video-thumbnail-editor-title {
+  display: none;
+}
+.video-detail-panel .video-detail-editor select {
+  padding: 8px;
+  border: 1px solid #dedad3;
+  border-radius: 5px;
+  background: white;
+}
+.video-detail-editor-actions button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid #dedad3;
+  border-radius: 5px;
+  background: white;
+  color: #55514a;
+  cursor: pointer;
+}
+.video-detail-editor-actions button:last-child {
+  background: var(--archive-accent-soft);
+  border-color: var(--archive-accent-border);
+}
+.video-detail-panel.is-editing .video-modal-info {
+  max-height: none;
+}
+@media (max-width: 600px) {
+  .video-detail-panel.video-modal-content {
+    height: calc(100dvh - 32px);
+    width: calc(100vw - 32px);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 44px minmax(100px, 1fr) auto;
+  }
+  .video-detail-panel .video-modal-info {
+    max-height: 38dvh;
+    padding: 14px 16px 16px;
+    border-left: 0;
+  }
+  .video-detail-panel.is-editing .video-modal-info {
+    max-height: 50dvh;
+  }
+}

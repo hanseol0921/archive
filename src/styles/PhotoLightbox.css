@@ -1,0 +1,432 @@
+.photo-preview-button {
+  position: relative;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.photo-preview-button span {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(25, 23, 20, 0.72);
+  color: #fff;
+  font-size: 12px;
+  pointer-events: none;
+}
+.photo-lightbox {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  background: rgba(18, 17, 15, 0.86);
+  cursor: zoom-out;
+}
+.photo-lightbox > img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(94vw, 1500px);
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.42);
+  cursor: default;
+}
+.photo-lightbox-close {
+  position: fixed;
+  z-index: 1;
+  top: 18px;
+  right: 24px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font: 300 40px/1 sans-serif;
+  cursor: pointer;
+}
+/* =========================
+   사진 상세 모달
+========================= */
+.photo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: rgba(30, 30, 30, 0.55);
+  backdrop-filter: blur(2px);
+}
+/* 모달 박스 */
+.photo-modal-content {
+  position: relative;
+  width: min(850px, 90vw);
+  height: min(680px, 85vh);
+  display: flex;
+  background: #ffffff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.25);
+}
+/* 큰 사진 */
+.modal-image {
+  position: relative;
+  width: 60%;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #eeeae0;
+}
+/* 뒤에 깔리는 같은 사진 */
+.modal-image-background {
+  position: absolute;
+  inset: -30px;
+  width: calc(100% + 60px);
+  height: calc(100% + 60px);
+  object-fit: cover;
+  filter: blur(2px) brightness(0.3);
+  transform: scale(1.08);
+  opacity: 0.7;
+}
+/* 실제 원본 사진 */
+.modal-image-main {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+/* 정보 */
+.modal-info {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 35px 25px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #bdbdbd transparent;
+}
+.modal-info::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-info::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-info::-webkit-scrollbar-thumb {
+  background: #bdbdbd;
+  border-radius: 10px;
+}
+.modal-date {
+  font-size: 15px;
+  color: #55514a;
+}
+.modal-meta {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #999288;
+}
+/* 태그 */
+.modal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 25px;
+}
+.modal-tag-button {
+  padding: 5px 8px;
+  background: #f3f3f3;
+  border: 1px solid #dedad3;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: #777268;
+  cursor: pointer;
+}
+.modal-tag-button:hover {
+  background: #e8e8e8;
+  border-color: #bfbab2;
+}
+/* 위버스 링크 */
+.weverse-link {
+  display: inline-block;
+  margin-top: auto;
+  padding-top: 20px;
+  font-size: 12px;
+  color: #55514a;
+  text-decoration: none;
+  border-bottom: 1px solid #55514a;
+  align-self: flex-start;
+}
+.weverse-link:hover {
+  opacity: 0.6;
+}
+/* 닫기 */
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  color: #55514a;
+  cursor: pointer;
+}
+.modal-close:hover {
+  opacity: 0.5;
+}
+/* =========================
+   관리자 사진 추가 버튼
+========================= */
+.add-photo-button {
+  height: 24px;
+  padding: 0 12px;
+  border: 1px solid #111111;
+  background: #ffffff;
+  color: #55514a;
+  font-size: 12px;
+  cursor: pointer;
+}
+.add-photo-button:hover {
+  background: #111111;
+  color: #ffffff;
+}
+/* =========================
+   관리자 사진 수정 / 삭제
+========================= */
+.admin-photo-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 25px;
+}
+.admin-photo-actions button {
+  height: 25px;
+  padding: 0 12px;
+  border: 1px solid #111111;
+  background: #ffffff;
+  color: #55514a;
+  font-size: 12px;
+  cursor: pointer;
+}
+.admin-photo-actions button:hover {
+  background: #111111;
+  color: #ffffff;
+}
+.admin-photo-actions button:last-child {
+  color: #b05a5a;
+  border-color: #b05a5a;
+}
+.admin-photo-actions button:last-child:hover {
+  background: #b05a5a;
+  color: #ffffff;
+}
+/* =========================
+   수정 폼
+========================= */
+.edit-form {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 7px;
+}
+.edit-title {
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #55514a;
+}
+.edit-form label {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #8d877d;
+}
+.edit-form input,
+.edit-form select {
+  width: 100%;
+  height: 27px;
+  padding: 4px 7px;
+  border: 1px solid #c9c2b7;
+  background: #ffffff;
+  color: #55514a;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.edit-form input:focus,
+.edit-form select:focus {
+  border-color: #55514a;
+}
+.edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 15px;
+}
+.edit-actions button {
+  height: 27px;
+  padding: 0 15px;
+  border: 1px solid #111111;
+  background: #ffffff;
+  color: #55514a;
+  font-size: 12px;
+  cursor: pointer;
+}
+.edit-actions button:last-child {
+  background: #111111;
+  color: #ffffff;
+}
+.edit-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.crop-editor {
+  width: 100%;
+  aspect-ratio: 0.7;
+  position: relative;
+  overflow: hidden;
+  background: #eeeae0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.crop-editor:active {
+  cursor: grabbing;
+}
+/* 크롭 안내 */
+/* 수정 화면의 크롭 영역 */
+.edit-crop-section {
+  margin-bottom: 18px;
+}
+.edit-crop-title {
+  margin-bottom: 7px;
+  font-size: 12px;
+  color: #8d877d;
+}
+/* =========================
+   크롭 위치 수정 미리보기
+========================= */
+.crop-editor {
+  width: 100%;
+  aspect-ratio: 0.7;
+  position: relative;
+  overflow: hidden;
+  background: #eeeae0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  border: 1px solid #ded9d0;
+}
+.crop-editor.dragging {
+  cursor: grabbing;
+}
+.crop-editor img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+/* =========================
+   크롭 설명
+========================= */
+.crop-editor-help {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #999288;
+}
+/* =========================
+   크롭 영역
+========================= */
+.edit-crop-section {
+  width: 100%;
+  margin-bottom: 12px;
+}
+.edit-crop-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #8d877d;
+}
+/* =========================
+   연결된 위버스 게시글
+========================= */
+.linked-post {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #ded9d0;
+}
+.linked-post-label {
+  margin-bottom: 10px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #aaa398;
+}
+.linked-post-content {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #69645c;
+  white-space: pre-wrap;
+}
+/* =========================
+   같은 게시글 사진
+========================= */
+.linked-post-photos {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 14px;
+}
+.linked-post-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 1px solid transparent;
+  background: #eeeae0;
+  overflow: hidden;
+  cursor: pointer;
+}
+.linked-post-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.linked-post-photo:hover {
+  opacity: 0.75;
+}
+/* 현재 보고 있는 사진 */
+.linked-post-photo.active {
+  border: 2px solid #63b8dc;
+}
+@media (max-width: 700px) {
+  .photo-lightbox {
+    padding: 18px;
+  }
+  .photo-lightbox > img {
+    max-width: 96vw;
+    max-height: 88vh;
+  }
+}

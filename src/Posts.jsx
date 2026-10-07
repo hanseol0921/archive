@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
-import "./App.css";
-import "./Diary.css";
+import "./styles/App.css";
+import "./styles/Diary.css";
+import "./styles/Posts.css";
 import TagPicker from "./TagPicker";
 import ContentReport from "./ContentReport";
 import { deleteFromR2, getR2Key } from "./r2Storage";
@@ -2093,7 +2094,7 @@ function handleEditCropEnd(
                 )
               }
             />
-            사진 아카이브에 표시
+            아카이브 표시
           </label>
 
           <label>

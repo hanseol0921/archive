@@ -1,0 +1,299 @@
+/* =========================
+   제목
+========================= */
+.archive-title {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #c9c2b7;
+}
+.archive-title small {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: #aaa398;
+}
+.archive-title h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: normal;
+  color: #625e57;
+}
+.total {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #8d877d;
+}
+/* =========================
+   ★ 사진 영역 ★
+========================= */
+.photo-grid {
+  /*
+    필터 아래 남은 공간을 전부 사용
+  */
+  flex: 1;
+  /*
+    flex 자식이 내용물 때문에
+    부모보다 커지는 것을 방지
+  */
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-content: start;
+  gap: 2px;
+  /*
+    ★★★★★★★★★★★★★★
+    여기만 스크롤
+    ★★★★★★★★★★★★★★
+  */
+  overflow-y: auto;
+  overflow-x: hidden;
+  transform: translateZ(0);
+  /*
+    스크롤바
+  */
+  scrollbar-width: thin;
+  scrollbar-color: #bdbdbd transparent;
+}
+/* =========================
+   웨일 / 크롬 스크롤바
+========================= */
+.photo-grid::-webkit-scrollbar {
+  width: 7px;
+}
+.photo-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+.photo-grid::-webkit-scrollbar-thumb {
+  background: #bdbdbd;
+  border-radius: 10px;
+}
+/* =========================
+   사진
+========================= */
+.photo-item {
+  min-width: 0;
+  position: relative;
+  cursor: pointer;
+  outline: 0 solid transparent;
+  transition: outline-color 0.12s ease;
+}
+.photo-item.is-selected {
+  outline: 3px solid #20afd0;
+  outline-offset: -3px;
+}
+.photo-select-control {
+  position: absolute;
+  z-index: 3;
+  top: 7px;
+  left: 7px;
+  width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 5px;
+  background: rgba(30, 29, 27, 0.62);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.12s ease, transform 0.12s ease, background 0.12s ease;
+}
+.photo-item:hover .photo-select-control,
+.photo-item:focus-within .photo-select-control,
+.photo-item.is-selected .photo-select-control {
+  opacity: 1;
+  transform: translateY(0);
+}
+.photo-select-control input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.photo-select-control span {
+  font: 700 16px/1 Arial, sans-serif;
+  opacity: 0;
+}
+.photo-item.is-selected .photo-select-control {
+  border-color: #20afd0;
+  background: #20afd0;
+}
+.photo-item.is-selected .photo-select-control span {
+  opacity: 1;
+}
+.photo-selection-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  margin: 0 0 8px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid #cfd8da;
+  border-radius: 8px;
+  background: #f4fbfc;
+}
+.photo-selection-toolbar strong {
+  margin-right: auto;
+  font-size: 14px;
+  color: #277b90;
+}
+.photo-selection-toolbar button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #42a9c0;
+  border-radius: 5px;
+  background: #fff;
+  color: #257c90;
+  font-size: 13px;
+  cursor: pointer;
+}
+.photo-selection-toolbar button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.photo-selection-toolbar .photo-selection-clear {
+  border-color: #c8c4bd;
+  color: #777067;
+}
+@media (hover: none) {
+  .photo-select-control {
+    top: 4px;
+    left: 4px;
+    width: 20px;
+    height: 20px;
+    opacity: 0.78;
+    transform: none;
+  }
+  .photo-selection-toolbar {
+    flex-wrap: wrap;
+  }
+  .photo-selection-toolbar strong {
+    flex: 0 0 100%;
+  }
+  .photo-selection-toolbar button {
+    flex: 1 1 auto;
+  }
+}
+.photo {
+  width: 100%;
+  aspect-ratio: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.photo span {
+  font-family: Arial, sans-serif;
+  font-size: 17px;
+  font-weight: bold;
+  color: #666;
+}
+/* =========================
+   사진 색상
+========================= */
+.photo.pink {
+  background: #f1e1e3;
+}
+.photo.blue {
+  background: #e0e8ef;
+}
+.photo.cream {
+  background: #eee8dc;
+}
+.photo.green {
+  background: #e2e9df;
+}
+.photo.purple {
+  background: #e9e1ed;
+}
+/* 공통 다운로드 버튼 */
+.media-download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 28px;
+  margin-top: 18px;
+  padding: 0 12px;
+  border: 1px solid #111111;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #55514a;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.media-download-button:hover {
+  background: #111111;
+  color: #ffffff;
+}
+.media-download-button.compact {
+  min-height: 24px;
+  margin-top: 0;
+  padding: 0 9px;
+  font-size: 12px;
+}
+/* 사진 아카이브 표시 여부 */
+.archive-visible-toggle {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 7px;
+  width: auto !important;
+  margin: 8px 0 2px;
+  font-size: 12px;
+  color: #777268;
+}
+.archive-visible-toggle input[type="checkbox"] {
+  width: 15px !important;
+  height: 15px !important;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.import-visible-toggle {
+  margin: 8px 0;
+}
+@media (max-width: 800px) {
+  .photo-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 2px !important;
+  }
+  .archive-media-count {
+    min-height: 16px;
+    margin: 0 1px 3px auto;
+    font-size: 12px;
+  }
+  .home-extra-toggles {
+    gap: 4px;
+    margin-bottom: 5px;
+  }
+  .home-extra-toggles button {
+    min-height: 24px;
+    padding: 3px 7px;
+    font-size: 12px;
+  }
+  .archive-title {
+    margin: 0;
+    padding-bottom: 10px;
+  }
+  /* 제목 */
+  .archive-title {
+    align-items: flex-end;
+  }
+  .archive-title h1 {
+    font-size: 22px;
+  }
+}

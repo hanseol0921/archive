@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "./supabaseClient";
-import "./ContentReport.css";
+import "./styles/ContentReport.css";
 
 function ContentReport({ target, onClose }) {
   const [message, setMessage] = useState("");

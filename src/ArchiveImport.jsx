@@ -4,7 +4,8 @@ import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 import { supabase } from "./supabaseClient";
-import "./App.css";
+import { withVideoSourceTags } from "./videoClassification";
+import "./styles/App.css";
 import TagPicker from "./TagPicker";
 import { deleteFromR2, uploadToR2 } from "./r2Storage";
 
@@ -529,13 +530,6 @@ function ArchiveImport() {
 
       const folderPath = parentPath ? `${parentPath}/${name}` : name;
 
-      const lowerPath = folderPath.toLowerCase();
-
-      // 모먼트는 일반 게시글 가져오기에서 제외
-      if (lowerPath.includes("모먼트")) {
-        continue;
-      }
-
       // 날짜로 시작하는 폴더 = 게시글 폴더
       if (/^\d{4}-\d{2}-\d{2}/.test(name)) {
         groups.push({
@@ -655,7 +649,7 @@ function ArchiveImport() {
 
       previewUrl: makePreviewUrl(file),
 
-      type: "셀카",
+      type: "",
 
       hairColor: "",
 
@@ -692,7 +686,7 @@ function ArchiveImport() {
 
         kind: "video",
 
-        type: "셀카",
+        type: "",
 
         tags: isMembership ? "멤버쉽" : "",
 
@@ -992,6 +986,7 @@ function ArchiveImport() {
               ? {
                   ...item,
                   [field]: value,
+                  ...(field === "type" && ["스크린샷", "같은사진"].includes(value) ? { archiveVisible: false } : {}),
                 }
               : item,
           ),
@@ -1372,7 +1367,7 @@ function ArchiveImport() {
 
             hair_color: item.hairColor || null,
 
-            archive_visible: item.archiveVisible !== false,
+            archive_visible: !["스크린샷", "같은사진"].includes(item.type) && item.archiveVisible !== false,
 
             tags: (item.tags || "")
               .split(",")
@@ -1441,10 +1436,11 @@ function ArchiveImport() {
 
             type: item.type || null,
 
-            tags: (item.tags || "")
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean),
+            tags: withVideoSourceTags({
+              type: item.type,
+              tags: (item.tags || "").split(",").map((tag) => tag.trim()).filter(Boolean),
+              search_tags: (item.searchTags || "").split(",").map((tag) => tag.trim()).filter(Boolean),
+            }, { weverse_url: draft.postWeverseUrl }, draft.folderPath).tags,
 
             search_tags: (item.searchTags || "")
               .split(",")
@@ -1617,7 +1613,7 @@ function ArchiveImport() {
 
                 <div className="import-folder-help">
                   총 {foundGroups.length}개를 찾았습니다. 현재 페이지에서 불러올
-                  게시글만 선택하세요. 모먼트 폴더는 자동 제외됩니다.
+                  게시글과 모먼트 폴더를 선택할 수 있습니다.
                 </div>
               </div>
 
@@ -1926,13 +1922,14 @@ function ArchiveImport() {
                             )
                           }
                         >
+                          <option value="">선택 안됨</option>
                           <option value="셀카">셀카</option>
 
                           <option value="남찍사">남찍사</option>
 
                           <option value="거울셀카">거울셀카</option>
 
-                          <option value="그외">그외</option>
+                          <option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
                         </select>
 
                         <select
@@ -1973,7 +1970,7 @@ function ArchiveImport() {
                               )
                             }
                           />
-                          사진 아카이브에 표시
+                          아카이브 표시
                         </label>
 
                         <TagPicker
@@ -1992,24 +1989,6 @@ function ArchiveImport() {
 
                     {item.kind === "video" && (
                       <>
-                        <select
-                          value={item.type || ""}
-                          disabled={draft.status === "uploaded"}
-                          onChange={(e) =>
-                            updateMedia(
-                              draft.id,
-                              item.id,
-                              "type",
-                              e.target.value,
-                            )
-                          }
-                        >
-                          <option value="">동영상 유형</option>
-                          <option value="셀카">셀카</option>
-                          <option value="남찍사">남찍사</option>
-                          <option value="거울셀카">거울셀카</option>
-                          <option value="그외">그외</option>
-                        </select>
 
                         <label style={{ display: "grid", gap: "4px" }}>
                           동영상 태그

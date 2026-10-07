@@ -7,6 +7,7 @@ import Videos from "./Videos";
 import Diary from "./Diary";
 import Guestbook from "./Guestbook";
 import { GlobalBgmPlayer } from "./ArchiveLayout";
+import Home from "./Home";
 
 function App() {
   const [path, setPath] = useState(window.location.pathname);
@@ -24,17 +25,20 @@ function App() {
   if (path === "/login") return <Login />;
 
   let page;
+  const showBgm = !path.startsWith("/admin") || ["/admin", "/admin/home", "/admin/videos", "/admin/posts", "/admin/diary", "/admin/guestbook", "/admin/dm"].includes(path);
   if (path.startsWith("/admin")) page = <AdminRoute />;
+  else if (path === "/") page = <Home isAdmin={false} />;
+  else if (path === "/photos") page = <Archive isAdmin={false} />;
   else if (path === "/videos") page = <Videos isAdmin={false} />;
   else if (path === "/posts") page = <Posts isAdmin={false} />;
   else if (path === "/diary") page = <Diary isAdmin={false} />;
   else if (path === "/guestbook") page = <Guestbook isAdmin={false} />;
-  else page = <Archive isAdmin={false} />;
+  else page = <Home isAdmin={false} />;
 
   return (
     <>
       {page}
-      <GlobalBgmPlayer isAdmin={path.startsWith("/admin")} />
+      {showBgm && <GlobalBgmPlayer isAdmin={path.startsWith("/admin")} />}
     </>
   );
 }

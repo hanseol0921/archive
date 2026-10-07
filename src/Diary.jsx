@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
-import "./Diary.css";
+import "./styles/Diary.css";
 import ContentReport from "./ContentReport";
 import TagPicker from "./TagPicker";
 
@@ -17,6 +17,7 @@ function Diary({ isAdmin = false }) {
   const [editTitle, setEditTitle] = useState("");
   const [editCoverId, setEditCoverId] = useState("");
   const [editCoverPosition, setEditCoverPosition] = useState("50% 50%");
+  const [videoCoverMap, setVideoCoverMap] = useState({});
   const [savingDiary, setSavingDiary] = useState(false);
   const [editTags, setEditTags] = useState("");
   const cropRef = useRef(null);
@@ -31,6 +32,19 @@ function Diary({ isAdmin = false }) {
       .eq("key", "profile_image")
       .maybeSingle()
       .then(({ data }) => setProfileImage(data?.value || ""));
+    supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "diary_video_covers")
+      .maybeSingle()
+      .then(({ data }) => {
+        try {
+          const parsed = typeof data?.value === "string" ? JSON.parse(data.value) : data?.value;
+          setVideoCoverMap(parsed && typeof parsed === "object" ? parsed : {});
+        } catch {
+          setVideoCoverMap({});
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -126,6 +140,11 @@ function Diary({ isAdmin = false }) {
       return selectedCover.thumbnail_url || selectedCover.image_url;
     }
 
+    const selectedVideo = getPostVideos(post.id).find(
+      (video) => String(video.id) === String(videoCoverMap[String(post.id)] || ""),
+    );
+    if (selectedVideo?.thumbnail_url) return selectedVideo.thumbnail_url;
+
     if (postPhotos[0]) {
       return postPhotos[0].thumbnail_url || postPhotos[0].image_url;
     }
@@ -188,10 +207,19 @@ function Diary({ isAdmin = false }) {
 
   function openDiaryEdit() {
     setEditTitle(selectedPost.diary_title || "");
+    const firstPhoto = getPostPhotos(selectedPost.id)[0];
+    const firstVideo = getPostVideos(selectedPost.id)[0];
+    const savedVideoId = videoCoverMap[String(selectedPost.id)];
     setEditCoverId(
       selectedPost.diary_cover_photo_id
-        ? String(selectedPost.diary_cover_photo_id)
-        : String(getPostPhotos(selectedPost.id)[0]?.id || ""),
+        ? `photo:${selectedPost.diary_cover_photo_id}`
+        : savedVideoId
+          ? `video:${savedVideoId}`
+          : firstPhoto
+            ? `photo:${firstPhoto.id}`
+            : firstVideo
+              ? `video:${firstVideo.id}`
+              : "",
     );
     setEditCoverPosition(selectedPost.diary_cover_position || "50% 50%");
     setEditTags(Array.isArray(selectedPost.tags) ? selectedPost.tags.join(", ") : "");
@@ -234,17 +262,18 @@ function Diary({ isAdmin = false }) {
       alert("다이어리 제목을 입력해주세요.");
       return;
     }
-    if (!editCoverId) {
-      alert("본문 사진을 눌러 대표 이미지를 선택해주세요.");
-      return;
-    }
+
+    const [coverKind, coverId = ""] = editCoverId.split(":");
+    const nextVideoCoverMap = { ...videoCoverMap };
+    if (coverKind === "video" && coverId) nextVideoCoverMap[String(selectedPost.id)] = coverId;
+    else delete nextVideoCoverMap[String(selectedPost.id)];
 
     setSavingDiary(true);
     const { data, error } = await supabase
       .from("weverse_posts")
       .update({
         diary_title: editTitle.trim(),
-        diary_cover_photo_id: editCoverId,
+        diary_cover_photo_id: coverKind === "photo" ? coverId : null,
         diary_cover_position: editCoverPosition,
         tags: editTags
           .split(",")
@@ -254,12 +283,21 @@ function Diary({ isAdmin = false }) {
       .eq("id", selectedPost.id)
       .select()
       .single();
-    setSavingDiary(false);
-
     if (error) {
+      setSavingDiary(false);
       alert(`다이어리 설정을 저장하지 못했습니다.\n${error.message}`);
       return;
     }
+    const { error: coverSettingError } = await supabase.from("site_settings").upsert(
+      { key: "diary_video_covers", value: JSON.stringify(nextVideoCoverMap), updated_at: new Date().toISOString() },
+      { onConflict: "key" },
+    );
+    setSavingDiary(false);
+    if (coverSettingError) {
+      alert(`영상 대표 썸네일 설정을 저장하지 못했습니다.\n${coverSettingError.message}`);
+      return;
+    }
+    setVideoCoverMap(nextVideoCoverMap);
     setPosts((current) => current.map((post) => String(post.id) === String(data.id) ? data : post));
     setSelectedPost(data);
     setEditMode(false);
@@ -282,10 +320,10 @@ function Diary({ isAdmin = false }) {
       if (!item) return null;
       return (
         <div
-          className={`diary-modal-media ${editMode && block.type === "photo" ? "diary-cover-selectable" : ""} ${String(editCoverId) === String(item.id) ? "selected-cover" : ""}`}
+          className={`diary-modal-media ${editMode ? "diary-cover-selectable" : ""} ${editCoverId === `${block.type}:${item.id}` ? "selected-cover" : ""}`}
           key={`${block.type}-${blockIndex}`}
           onClick={() => {
-            if (editMode && block.type === "photo") setEditCoverId(String(item.id));
+            if (editMode) setEditCoverId(`${block.type}:${item.id}`);
           }}
         >
           {block.type === "photo" ? (
@@ -417,9 +455,13 @@ function Diary({ isAdmin = false }) {
                 </label>
 
                 {(() => {
-                  const cover = getPostPhotos(selectedPost.id).find(
-                    (photo) => String(photo.id) === String(editCoverId),
-                  );
+                  const [coverKind, coverId] = editCoverId.split(":");
+                  const cover = coverKind === "photo" ? getPostPhotos(selectedPost.id).find(
+                    (photo) => String(photo.id) === String(coverId),
+                  ) : null;
+                  const coverVideo = coverKind === "video" ? getPostVideos(selectedPost.id).find(
+                    (video) => String(video.id) === String(coverId),
+                  ) : null;
                   return cover ? (
                     <>
                       <div
@@ -440,7 +482,23 @@ function Diary({ isAdmin = false }) {
                       </div>
                       <p>아래 본문 사진을 누르면 대표 이미지가 바뀝니다.</p>
                     </>
-                  ) : <p>아래 본문 사진을 눌러 대표 이미지를 선택해주세요.</p>;
+                  ) : coverVideo ? (
+                    <>
+                      <div className="diary-drag-crop diary-video-cover-preview">
+                        {coverVideo.thumbnail_url ? (
+                          <img src={coverVideo.thumbnail_url} alt="영상 대표 썸네일" />
+                        ) : (
+                          <video src={coverVideo.video_url} muted playsInline preload="metadata" />
+                        )}
+                        <span>선택한 영상의 썸네일을 사용합니다</span>
+                      </div>
+                      <p>아래 본문 영상이나 사진을 누르면 대표 미디어가 바뀝니다.</p>
+                    </>
+                  ) : getPostPhotos(selectedPost.id).length || getPostVideos(selectedPost.id).length ? (
+                    <p>아래 본문 사진이나 영상을 누르면 대표 미디어를 선택할 수 있습니다.</p>
+                  ) : (
+                    <p>사진이 없는 다이어리는 대표 이미지 없이 제목과 태그만 저장됩니다.</p>
+                  );
                 })()}
 
                 <div className="diary-settings-actions">
@@ -463,19 +521,19 @@ function Diary({ isAdmin = false }) {
                     <button
                       type="button"
                       key={`photo-${item.id}`}
-                      className={`diary-fallback-photo ${editMode ? "diary-cover-selectable" : ""} ${String(editCoverId) === String(item.id) ? "selected-cover" : ""}`}
-                      onClick={() => { if (editMode) setEditCoverId(String(item.id)); }}
+                      className={`diary-fallback-photo ${editMode ? "diary-cover-selectable" : ""} ${editCoverId === `photo:${item.id}` ? "selected-cover" : ""}`}
+                      onClick={() => { if (editMode) setEditCoverId(`photo:${item.id}`); }}
                     >
                       <img src={item.image_url} alt="" loading="lazy" decoding="async" />
                     </button>
                   ) : (
-                    <video
+                    <div
                       key={`video-${item.id}`}
-                      src={item.video_url}
-                      poster={item.thumbnail_url || undefined}
-                      controls
-                      preload="metadata"
-                    />
+                      className={`${editMode ? "diary-cover-selectable" : ""} ${editCoverId === `video:${item.id}` ? "selected-cover" : ""}`}
+                      onClick={() => { if (editMode) setEditCoverId(`video:${item.id}`); }}
+                    >
+                      <video src={item.video_url} poster={item.thumbnail_url || undefined} controls preload="metadata" />
+                    </div>
                   ),
                 )}
               </div>

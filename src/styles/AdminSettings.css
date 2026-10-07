@@ -1,0 +1,87 @@
+.profile:has(.settings-menu) {
+  padding: 36px 24px;
+  text-align: left;
+}
+.settings-menu {
+  display: grid;
+  gap: 8px;
+}
+.settings-menu h2 {
+  font-size: 16px;
+  margin: 0 0 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ddd;
+}
+.settings-menu button {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #777;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+}
+.settings-menu button[aria-pressed="true"] {
+  background: var(--archive-accent-soft);
+  color: var(--archive-accent-text);
+  font-weight: 600;
+}
+.settings-content {
+  text-align: left;
+  min-height: 0;
+  overflow-y: auto;
+}
+.settings-content h1 {
+  font-size: 20px;
+  margin: 4px 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #ddd;
+}
+.settings-links {
+  display: grid;
+  gap: 12px;
+}
+.settings-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #dededb;
+  border-radius: 8px;
+  color: #55514a;
+  text-decoration: none;
+}
+.settings-links a:hover {
+  background: var(--archive-accent-soft);
+  border-color: var(--archive-accent);
+}
+.settings-links strong {
+  font-size: 16px;
+}
+.settings-links p {
+  font-size: 13px;
+  color: #888;
+  margin: 8px 0 0;
+}
+.settings-links a > span {
+  font-size: 24px;
+  color: var(--archive-accent-text);
+}
+.settings-mobile-menu {
+  display: none;
+}
+@media (max-width: 800px) {
+  .settings-mobile-menu {
+    display: block;
+    margin-bottom: 16px;
+  }
+  .settings-mobile-menu .settings-menu {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .settings-mobile-menu h2 {
+    display: none;
+  }
+}

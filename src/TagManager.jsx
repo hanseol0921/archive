@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { clearTagCache } from "./TagPicker";
-import "./TagPicker.css";
-import "./App.css";
+import "./styles/TagPicker.css";
+import "./styles/App.css";
 
 const splitAliases = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
 

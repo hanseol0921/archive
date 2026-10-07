@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import "./ScraperControl.css";
+import "./styles/ScraperControl.css";
 
 const LOCAL_SERVER = "http://127.0.0.1:8765";
 
@@ -37,10 +37,11 @@ function ScraperControl() {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [snapshot.logs]);
 
-  async function runAction(action) {
+  async function runAction(action, mode = 'posts') {
     setMessage("");
     try {
-      const response = await fetch(`${LOCAL_SERVER}/${action}`, { method: "POST" });
+      const response = await fetch(`${LOCAL_SERVER}/${action}`, { method: "POST",
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || data.error || "요청 실패");
       setSnapshot(data);
@@ -86,6 +87,8 @@ function ScraperControl() {
         )}
 
         <div className="scraper-control-actions">
+          <button type="button" disabled={!connected || snapshot.running} onClick={() => runAction('start', 'dm')}>DM 수집 시작</button>
+          <a href="/admin/dm/import">DM 가져오기</a>
           <button type="button" disabled={!connected || snapshot.running} onClick={() => runAction("start")}>최근 게시글 확인 시작</button>
           <button type="button" className="continue" disabled={!connected || !snapshot.running} onClick={() => runAction("continue")}>브라우저 이동 완료 · 계속</button>
           <button type="button" className="stop" disabled={!connected || !snapshot.running} onClick={() => {
