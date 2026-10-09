@@ -1,10 +1,14 @@
 import DiaryImage from "./DiaryImage";
+import ArchiveVideoPlayer from "./ArchiveVideoPlayer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
 import "./styles/Diary.css";
 import ContentReport from "./ContentReport";
 import TagPicker from "./TagPicker";
+import WeverseProfile from './WeverseProfile';
+import {PostComments} from './WeverseComments';
+import {sourcePostId,postTimestamp} from './weverseData';
 
 function Diary({ isAdmin = false }) {
   const [posts, setPosts] = useState([]);
@@ -13,7 +17,6 @@ function Diary({ isAdmin = false }) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState(null);
-  const [profileImage, setProfileImage] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editCoverId, setEditCoverId] = useState("");
@@ -30,12 +33,6 @@ function Diary({ isAdmin = false }) {
     supabase
       .from("site_settings")
       .select("value")
-      .eq("key", "profile_image")
-      .maybeSingle()
-      .then(({ data }) => setProfileImage(data?.value || ""));
-    supabase
-      .from("site_settings")
-      .select("value")
       .eq("key", "diary_video_covers")
       .maybeSingle()
       .then(({ data }) => {
@@ -47,6 +44,7 @@ function Diary({ isAdmin = false }) {
         }
       });
   }, []);
+
 
 
   async function loadDiary() {
@@ -90,6 +88,8 @@ function Diary({ isAdmin = false }) {
       ]);
 
       setPosts(diaryPosts);
+      const source=new URLSearchParams(window.location.search).get('weverse');
+      if(source) {const requested=diaryPosts.find(post=>sourcePostId(post.weverse_url)===source);if(requested)setSelectedPost(requested);}
       if (photoResult.error) {
         console.error("다이어리 사진을 불러오지 못했습니다:", photoResult.error);
         setPhotos([]);
@@ -322,7 +322,7 @@ function Diary({ isAdmin = false }) {
           {block.type === "photo" ? (
             <DiaryImage key={item.id} photo={item} priority={orderedPhotos[0]?.id === item.id} />
           ) : (
-            <video src={item.video_url} poster={item.thumbnail_url || undefined} controls preload="none" />
+            <div className="diary-video-player"><ArchiveVideoPlayer src={item.video_url} poster={item.thumbnail_url} preload="none" /></div>
           )}
         </div>
       );
@@ -389,9 +389,7 @@ function Diary({ isAdmin = false }) {
             <header className="diary-modal-header">
               <h2>{selectedPost.diary_title || "제목 없는 다이어리"}</h2>
               <div className="diary-modal-profile-row">
-                <div className="diary-modal-profile">
-                  {profileImage ? <img src={profileImage} alt="" /> : <span>PROFILE</span>}
-                </div>
+                <WeverseProfile at={postTimestamp(selectedPost)} sourceId={sourcePostId(selectedPost.weverse_url)} name={selectedPost.author} isAdmin={isAdmin}/>
                 <div className="diary-modal-profile-info">
                   <strong>{selectedPost.author || "리우"}</strong>
                   <div className="diary-modal-date-time">
@@ -516,7 +514,7 @@ function Diary({ isAdmin = false }) {
                       className={`${editMode ? "diary-cover-selectable" : ""} ${editCoverId === `video:${item.id}` ? "selected-cover" : ""}`}
                       onClick={() => { if (editMode) setEditCoverId(`video:${item.id}`); }}
                     >
-                      <video src={item.video_url} poster={item.thumbnail_url || undefined} controls preload="metadata" />
+                      <div className="diary-video-player"><ArchiveVideoPlayer src={item.video_url} poster={item.thumbnail_url} preload="none" /></div>
                     </div>
                   ),
                 )}
@@ -530,6 +528,7 @@ function Diary({ isAdmin = false }) {
               </div>
             )}
 
+            <PostComments key={selectedPost.id} post={selectedPost} isAdmin={isAdmin}/>
           </article>
         </section>
       )}

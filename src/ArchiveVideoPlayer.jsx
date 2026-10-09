@@ -40,7 +40,7 @@ export const LazyVideoThumbnail = ({ src, time, onLoadedMetadata }) => {
   </div>;
 };
 
-const ArchiveVideoPlayer = forwardRef(function ArchiveVideoPlayer({ src, poster, onDuration, capture = false }, forwardedRef) {
+const ArchiveVideoPlayer = forwardRef(function ArchiveVideoPlayer({ src, poster, onDuration, capture = false, preload = "auto" }, forwardedRef) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -86,7 +86,7 @@ const ArchiveVideoPlayer = forwardRef(function ArchiveVideoPlayer({ src, poster,
     if (event.key === "ArrowRight" || event.key === "ArrowLeft") { event.preventDefault(); if (videoRef.current) videoRef.current.currentTime = Math.max(0, Math.min(duration, time + (event.key === "ArrowRight" ? 5 : -5))); }
   }}>
     {poster && <div className="archive-video-backdrop" style={{ backgroundImage: `url(${JSON.stringify(poster)})` }} />}
-    <video key={`${src}-${cors}-${attempt}`} ref={bindRef} className="video-modal-main" src={src} poster={poster || undefined} crossOrigin={cors ? "anonymous" : undefined} preload="auto" playsInline muted={muted}
+    <video key={`${src}-${cors}-${attempt}`} ref={bindRef} className="video-modal-main" src={src} poster={poster || undefined} crossOrigin={cors ? "anonymous" : undefined} preload={preload} playsInline muted={muted}
       onVolumeChange={(event) => setMuted(event.currentTarget.muted)}
       onClick={() => void toggle()}
       onLoadedMetadata={(event) => { const value = event.currentTarget.duration; setDuration(Number.isFinite(value) ? value : 0); onDuration?.(Number.isFinite(value) ? value : 0); }}

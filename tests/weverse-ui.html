@@ -1,0 +1,9 @@
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><div id="root"></div><script type="module">
+import React from 'react';
+import '/src/styles/index.css';
+import {createRoot} from 'react-dom/client';
+import Comments,{PostComments} from '/src/WeverseComments.jsx';
+import Profile from '/src/WeverseProfile.jsx';
+const mode=new URLSearchParams(location.search).get('mode');
+createRoot(document.getElementById('root')).render(mode==='post'?React.createElement('main',{style:{maxWidth:700,margin:'24px auto',padding:16}},React.createElement(Profile,{at:'2026-10-09T01:00:00Z',name:'리우',isAdmin:true}),React.createElement(PostComments,{post:{weverse_url:'https://weverse.io/boynextdoor/artist/4-123'},isAdmin:true})):React.createElement(Comments,{isAdmin:true}));
+</script></body></html>

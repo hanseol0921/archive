@@ -397,9 +397,16 @@
   background: #f6f3ed;
 }
 .post-modal-header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
   padding-right: 40px;
   margin-bottom: 20px;
 }
+.post-modal-header > .wv-avatar { grid-row: 1 / span 2; }
+.post-modal-header > .post-modal-author,
+.post-modal-header > .post-modal-date { grid-column: 2; text-align: left; }
 .diary-cover-crop-editor {
   display: grid;
   gap: 7px;

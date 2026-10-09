@@ -11,12 +11,13 @@ import PhotoManager from "./PhotoManager";
 import UnclassifiedMediaManager from "./UnclassifiedMediaManager";
 import Guestbook from "./Guestbook";
 import ReportManager from "./ReportManager";
-import ScraperControl from "./ScraperControl";
 import TagManager from "./TagManager";
 import Home from "./Home";
 import DM from "./DM";
 import DMImport from "./DMImport";
 import AdminSettings from "./AdminSettings";
+import WeverseComments from './WeverseComments';
+import WeverseImport from './WeverseImport';
 
 function AdminRoute() {
   const [session, setSession] = useState(null);
@@ -57,6 +58,8 @@ function AdminRoute() {
   }
 
   if (path === "/admin/settings") return <AdminSettings />;
+  if (path === '/admin/comments') return <WeverseComments isAdmin />;
+  if (path === '/admin/weverse/import') return <WeverseImport />;
   if (path === "/admin/import") return <ArchiveImport />;
   if (path === "/admin/dm") return <DM isAdmin />;
   if (path === "/admin/dm/import") return <DMImport />;
@@ -68,7 +71,6 @@ function AdminRoute() {
   if (path === "/admin/photos/manage") return <PhotoManager />;
   if (path === "/admin/media/unclassified") return <UnclassifiedMediaManager />;
   if (path === "/admin/reports") return <ReportManager />;
-  if (path === "/admin/scraper") return <ScraperControl />;
   if (path === "/admin/tags") return <TagManager />;
   if (path === "/admin/home") return <Home isAdmin={true} />;
 

@@ -685,6 +685,15 @@ function ArchiveLayout({
   const [siteCopyLoaded, setSiteCopyLoaded] = useState(() => Boolean(cachedSiteCopy));
 
   useEffect(() => {
+    const title = siteCopy.archiveTitle?.trim();
+    if (!title) return;
+    document.title = title;
+    for (const selector of ['meta[name="application-name"]', 'meta[property="og:site_name"]']) {
+      document.querySelector(selector)?.setAttribute("content", title);
+    }
+  }, [siteCopy.archiveTitle]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadSiteCopy() {
@@ -1396,6 +1405,9 @@ function ArchiveLayout({
 
               {isAdmin && <button type="button" className={`archive-side-tab ${activeTab === 'dm' ? 'active' : ''}`}
                 onClick={() => navigateInsideArchive('/admin/dm')}>DM</button>}
+
+              <button type="button" className={`archive-side-tab ${activeTab === 'comments' ? 'active' : ''}`}
+                onClick={()=>navigateInsideArchive(isAdmin?'/admin/comments':'/comments')}>댓글</button>
 
               <button
                 type="button"

@@ -8,6 +8,9 @@ import "./styles/Posts.css";
 import TagPicker from "./TagPicker";
 import ContentReport from "./ContentReport";
 import { deleteFromR2, getR2Key } from "./r2Storage";
+import WeverseProfile from './WeverseProfile';
+import {PostComments} from './WeverseComments';
+import {sourcePostId,postTimestamp} from './weverseData';
 
 function Posts({ isAdmin = false }) {
   const [posts, setPosts] = useState([]);
@@ -145,9 +148,10 @@ function Posts({ isAdmin = false }) {
       setVideos(videoData || []);
 
       const requestedPostId = new URLSearchParams(window.location.search).get("post");
-      if (requestedPostId) {
+      const requestedSourceId = new URLSearchParams(window.location.search).get('weverse');
+      if (requestedPostId || requestedSourceId) {
         const requestedPost = (postData || []).find(
-          (post) => String(post.id) === String(requestedPostId),
+          (post) => requestedSourceId ? sourcePostId(post.weverse_url) === requestedSourceId : String(post.id) === String(requestedPostId),
         );
         if (requestedPost) setSelectedPost(requestedPost);
       }
@@ -1631,6 +1635,8 @@ function handleEditCropEnd(
 
                 <div className="post-modal-header">
 
+                  <WeverseProfile at={postTimestamp(selectedPost)} sourceId={sourcePostId(selectedPost.weverse_url)} name={selectedPost.author} isAdmin={isAdmin}/>
+
                   {selectedPost.author && (
                     <div className="post-modal-author">
                       {selectedPost.author}
@@ -1776,6 +1782,8 @@ function handleEditCropEnd(
 
                 )}
                 </>}
+
+                <PostComments key={selectedPost.id} post={selectedPost} isAdmin={isAdmin}/>
 
               </>
             ) : (

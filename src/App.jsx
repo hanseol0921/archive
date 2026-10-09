@@ -8,6 +8,7 @@ import Diary from "./Diary";
 import Guestbook from "./Guestbook";
 import { GlobalBgmPlayer } from "./ArchiveLayout";
 import Home from "./Home";
+import WeverseComments from './WeverseComments';
 
 function App() {
   const [path, setPath] = useState(window.location.pathname);
@@ -31,6 +32,7 @@ function App() {
   else if (path === "/photos") page = <Archive isAdmin={false} />;
   else if (path === "/videos") page = <Videos isAdmin={false} />;
   else if (path === "/posts") page = <Posts isAdmin={false} />;
+  else if (path === '/comments') page = <WeverseComments />;
   else if (path === "/diary") page = <Diary isAdmin={false} />;
   else if (path === "/guestbook") page = <Guestbook isAdmin={false} />;
   else page = <Home isAdmin={false} />;

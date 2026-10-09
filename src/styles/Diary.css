@@ -419,6 +419,14 @@
   object-fit: contain;
   background: #111;
 }
+.diary-video-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 75vh;
+}
+.diary-modal-media .archive-video-player video {
+  max-height: none;
+}
 .diary-modal-links {
   display: flex;
   justify-content: space-between;
