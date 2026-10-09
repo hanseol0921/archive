@@ -1,23 +1,16 @@
 import { videoSourceTags } from "./videoClassification.js";
 export const YOUTUBE_CONTENT_KEY = "youtube_contents";
 export const VIDEO_FOLDERS_KEY = "video_folders";
-export const ROOT_VIDEO_FOLDERS = [
-  { id: "weverse", name: "위버스", parentId: null },
-  { id: "youtube", name: "유튜브 콘텐츠", parentId: null },
-  { id: "weverse-moments", name: "모먼트", parentId: "weverse", autoTag: "모먼트" },
-  { id: "weverse-dm", name: "DM", parentId: "weverse", autoTag: "DM" },
-  { id: "weverse-posts", name: "포스트", parentId: "weverse", autoTag: "포스트" },
-  { id: "weverse-live", name: "라이브", parentId: "weverse", autoTag: "라이브" },
-];
+
 
 export function parseVideoFolders(value) {
-  if (value == null || value === "") return ROOT_VIDEO_FOLDERS;
+  if (value == null || value === "") return [];
   const folders = typeof value === "string" ? JSON.parse(value) : value;
   if (!Array.isArray(folders) || folders.some((folder) => !folder || typeof folder.id !== "string"
     || typeof folder.name !== "string" || !folder.name.trim()
     || (folder.videoIds != null && !Array.isArray(folder.videoIds)))
     || new Set(folders.map((folder) => folder.id)).size !== folders.length
-    || !ROOT_VIDEO_FOLDERS.filter((root) => root.parentId == null).every((root) => folders.some((folder) => folder.id === root.id && folder.parentId == null))) {
+    || (folders.length > 0 && !["weverse", "youtube"].every((id) => folders.some((folder) => folder.id === id && folder.parentId == null)))) {
     throw new Error("폴더 목록 형식이 올바르지 않습니다.");
   }
   for (const folder of folders) {
@@ -31,11 +24,10 @@ export function parseVideoFolders(value) {
     }
   }
   const result = folders.map((folder) => ({ ...folder }));
-  for (const defaultFolder of ROOT_VIDEO_FOLDERS.filter((folder) => folder.autoTag)) {
-    const existing = result.find((folder) => folderDescendants(result, "weverse").has(folder.id)
-      && (folder.autoTag === defaultFolder.autoTag || folder.name.trim().toLowerCase() === defaultFolder.name.toLowerCase()));
-    if (existing) existing.autoTag = defaultFolder.autoTag;
-    else result.push({ ...defaultFolder, id: result.some((folder) => folder.id === defaultFolder.id) ? `${defaultFolder.id}-auto` : defaultFolder.id });
+  for (const tag of ["모먼트", "DM", "포스트", "라이브"]) {
+    for (const folder of result) {
+      if (folderDescendants(result, "weverse").has(folder.id) && folder.name.trim().toLowerCase() === tag.toLowerCase() && !folder.autoTag) folder.autoTag = tag;
+    }
   }
   return result;
 }

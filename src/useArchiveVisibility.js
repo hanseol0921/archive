@@ -55,7 +55,7 @@ export default function useArchiveVisibility(isAdmin) {
           for (let offset = 0; ; offset += 500) {
             const { data: batch, error: batchError } = await supabase.from(table).select("*").order("id").range(offset, offset + 499);
             if (batchError) throw batchError;
-            hidden.push(...batch.filter((row) => !["스크린샷", "같은사진"].includes(row.type) && row.archive_visible === false && (isDmMedia(row) || Object.values(getPhotoExtraGroups(row)).some(Boolean))).map((row) => row.id));
+            hidden.push(...batch.filter((row) => !["스크린샷", "같은사진", "짤"].includes(row.type) && row.archive_visible === false && (isDmMedia(row) || Object.values(getPhotoExtraGroups(row)).some(Boolean))).map((row) => row.id));
             if (batch.length < 500) break;
           }
           for (let offset = 0; offset < hidden.length; offset += 100) {

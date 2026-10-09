@@ -639,6 +639,7 @@ function ArchiveLayout({
   // 현재 선택된 탭
   // "photos" | "videos" | "posts" | "diary" | "guestbook"
   activeTab = "photos",
+  onActiveTabClick,
 
   // 각 페이지가 자기 검색 state를 넘겨줌
   search = "",
@@ -1401,7 +1402,7 @@ function ArchiveLayout({
                 className={`archive-side-tab ${
                   activeTab === "diary" ? "active" : ""
                 }`}
-                onClick={goDiary}
+                onClick={() => { if (activeTab === "diary" && onActiveTabClick) onActiveTabClick(); else goDiary(); }}
               >
                 다이어리
               </button>

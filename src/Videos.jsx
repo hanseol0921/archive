@@ -1,3 +1,4 @@
+import { VIDEO_TYPES, UNCLASSIFIED_TYPE, isUnclassifiedType } from "./mediaClassification";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
@@ -27,6 +28,8 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
   const [savingThumbnail, setSavingThumbnail] = useState(false);
   const [editingVideo, setEditingVideo] = useState(false);
   const [savingVideo, setSavingVideo] = useState(false);
+  const [editOverlayText, setEditOverlayText] = useState("");
+  const [editVideoType, setEditVideoType] = useState("");
   const [editVideoHairColor, setEditVideoHairColor] = useState("");
   const [editVideoTags, setEditVideoTags] = useState("");
   const [editVideoSearchTags, setEditVideoSearchTags] = useState("");
@@ -36,6 +39,7 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
   const [sortOrder, setSortOrder] = useState("최신순");
 
 
+  const [videoType, setVideoType] = useState("전체");
   const [videoHairColor, setVideoHairColor] = useState("전체");
 
   const [search, setSearch] = useState("");
@@ -54,7 +58,9 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
 
     setThumbnailTime(Number(selectedVideo.thumbnail_time) || 0);
     setVideoDuration(0);
-    setEditingVideo(false);
+    setEditingVideo(isAdmin);
+    setEditOverlayText(selectedVideo.overlay_text || "");
+    setEditVideoType(VIDEO_TYPES.includes(selectedVideo.type) ? selectedVideo.type : "");
     setEditVideoHairColor(selectedVideo.hair_color || "");
     setEditVideoTags(
       Array.isArray(selectedVideo.tags) ? selectedVideo.tags.join(", ") : "",
@@ -64,7 +70,7 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
         ? selectedVideo.search_tags.join(", ")
         : "",
     );
-  }, [selectedVideo]);
+  }, [selectedVideo, isAdmin]);
 
   function splitTags(value) {
     return value
@@ -77,6 +83,8 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
     if (!selectedVideo) return;
 
     const nextValues = {
+      ...(("overlay_text" in selectedVideo || editOverlayText.trim()) ? { overlay_text: editOverlayText.trim() } : {}),
+      type: editVideoType || UNCLASSIFIED_TYPE,
       hair_color: editVideoHairColor || null,
       tags: splitTags(editVideoTags),
       search_tags: splitTags(editVideoSearchTags),
@@ -267,23 +275,17 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
     setLoading(true);
 
     try {
-      const { data: videoData, error: videoError } = await supabase
-        .from("videos")
-        .select("*");
+      const [videoResult, postResult] = await Promise.all([
+        supabase.from("videos").select("*"),
+        supabase.from("weverse_posts").select("*"),
+      ]);
+      if (videoResult.error) throw videoResult.error;
+      if (postResult.error) throw postResult.error;
+      const videoData = videoResult.data;
+      const postData = postResult.data;
+      const postsById = new Map((postData || []).map(post => [String(post.id), post]));
 
-      if (videoError) {
-        throw videoError;
-      }
-
-      const { data: postData, error: postError } = await supabase
-        .from("weverse_posts")
-        .select("*");
-
-      if (postError) {
-        throw postError;
-      }
-
-      setVideos((videoData || []).map((video) => withVideoSourceTags(video, (postData || []).find((post) => String(post.id) === String(video.post_id)))));
+      setVideos((videoData || []).map((video) => withVideoSourceTags(video, postsById.get(String(video.post_id)))));
       setPosts(postData || []);
     } catch (error) {
       console.error("동영상 불러오기 오류:", error);
@@ -376,6 +378,7 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
           video.type,
           videoDate,
           post?.content,
+          video.overlay_text,
           ...tags,
           ...searchTags,
         ];
@@ -387,7 +390,7 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
           );
 
         return (
-          matchesHairColor &&
+          (videoType === "전체" || (videoType === UNCLASSIFIED_TYPE ? isUnclassifiedType(video.type) : video.type === videoType)) && matchesHairColor &&
           matchesStartDate &&
           matchesEndDate &&
           matchesSearch
@@ -412,6 +415,7 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
     videos,
     posts,
     sortOrder,
+    videoType,
     videoHairColor,
     search,
     extraSelection,
@@ -480,7 +484,9 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
                   search={search}
                   setSearch={setSearch}
                   searchPlaceholder="검색어를 입력하세요"
-                  showType={false}
+                  type={videoType}
+                  setType={setVideoType}
+                  typeOptions={["전체", ...(isAdmin ? ["선택 안됨", ...VIDEO_TYPES] : ["춤", "노래", "셀카"])]}
                   extraSelection={isAdmin ? visibility.allowed : extraSelection}
                   setExtraSelection={isAdmin ? visibility.change : setExtraSelection}
                   extraDisabled={isAdmin && (!visibility.ready || visibility.saving)}
@@ -499,10 +505,11 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
                   secondaryLabel="머리색"
                   secondaryOptions={["흑발", "갈발", "금발", "적발", "은발", "핑머", "주머", "와인", "베이지"]}
                   allActive={
-                    videoHairColor === "전체" &&
+                    videoType === "전체" && videoHairColor === "전체" &&
                     search.trim() === ""
                   }
                   onAllClick={() => {
+                    setVideoType("전체");
                     setVideoHairColor("전체");
                     setSearch("");
                   }}
@@ -684,6 +691,7 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
                         </div>
                       )}
 
+                      {!editingVideo && selectedVideo.overlay_text && <div className="video-overlay-caption"><strong>영상 위 텍스트</strong><p>{selectedVideo.overlay_text}</p></div>}
                       {!editingVideo && Array.isArray(selectedVideo.tags) && (
                         <div className="modal-tags">
                           {selectedVideo.tags.map((tag) => (
@@ -701,6 +709,7 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
 
                       {isAdmin && editingVideo && (
                         <div className="video-detail-editor">
+                          <label>영상 위 텍스트<textarea rows={3} maxLength={5000} value={editOverlayText} onChange={(event) => setEditOverlayText(event.target.value)} placeholder="모먼트 영상 위에 적힌 텍스트를 입력하세요" /></label>
                           <label>
                             머리색
                             <select
@@ -719,10 +728,10 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
                               <option value="베이지">베이지</option>
                             </select>
                           </label>
-                          <label>
-                            태그
+                          <label>동영상 유형<select value={editVideoType} onChange={(event) => setEditVideoType(event.target.value)}><option value="">선택 안됨</option>{VIDEO_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label>
+                          <div><span>태그</span>
                             <TagPicker value={editVideoTags} onChange={setEditVideoTags} />
-                          </label>
+                          </div>
                           <div className="input-help">검색용 태그는 관리자 태그 사전에서 관리합니다.</div>
                           <div className="video-detail-editor-actions">
                             <button

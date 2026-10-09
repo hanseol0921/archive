@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import "./styles/TagPicker.css";
 
@@ -111,7 +112,7 @@ function TagPicker({ value, onChange, allowCreate = true, placeholder = "태그 
         {selected.map((name) => (
           <span className="tag-picker-chip" key={name}>
             {name}
-            {!disabled && <button type="button" aria-label={`${name} 태그 제거`} onClick={() => emit(selected.filter((tag) => tag !== name))}>×</button>}
+            {!disabled && <button type="button" aria-label={`${name} 태그 제거`} onClick={() => emit(selected.filter((tag) => tag !== name))}><X size={12} aria-hidden="true" /></button>}
           </span>
         ))}
         <input

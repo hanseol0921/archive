@@ -1,24 +1,28 @@
+import { matchesVideoContent } from "./videoSearchText";
 import { useEffect, useRef, useState } from "react";
 import { Folder, Play, Plus, Pencil, Trash2 } from "lucide-react";
 import ArchiveLayout from "./ArchiveLayout";
 import WeverseLiveLibrary from "./WeverseLiveLibrary";
-import { ArchiveSortControl } from "./ArchiveFilters";
+import ArchiveFilters, { ArchiveSortControl } from "./ArchiveFilters";
 import { loadYoutubeMetadata, sortYoutubeItems, youtubeKstDate } from "./youtubeMetadata";
 import { supabase } from "./supabaseClient";
-import { YOUTUBE_CONTENT_KEY, VIDEO_FOLDERS_KEY, ROOT_VIDEO_FOLDERS, parseVideoFolders, folderDescendants, folderSource, parseYoutubeContents, youtubeVideoId, moveVideoFolder } from "./youtubeContent";
+import { YOUTUBE_CONTENT_KEY, VIDEO_FOLDERS_KEY, parseVideoFolders, folderDescendants, folderSource, parseYoutubeContents, youtubeVideoId, moveVideoFolder } from "./youtubeContent";
 import "./styles/VideoLibrary.css";
 
 const emptyDraft = { title: "", url: "" };
+let confirmedFolders = null;
 
 export default function VideoLibrary({ isAdmin, WeverseVideos }) {
   const [folder, setFolder] = useState("weverse");
   const [items, setItems] = useState([]);
-  const [folderItems, setFolderItems] = useState(ROOT_VIDEO_FOLDERS);
+  const [folderItems, setFolderItems] = useState(() => confirmedFolders || []);
   const [folderDraft, setFolderDraft] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -27,7 +31,6 @@ export default function VideoLibrary({ isAdmin, WeverseVideos }) {
   const [sort, setSort] = useState("최신순");
   const [metadata, setMetadata] = useState({});
   const [metadataError, setMetadataError] = useState("");
-  const [metadataLoading, setMetadataLoading] = useState(false);
   const [metadataRevision, setMetadataRevision] = useState(0);
   const savedUpdatedAt = useRef({});
   const exists = useRef({});
@@ -59,13 +62,11 @@ export default function VideoLibrary({ isAdmin, WeverseVideos }) {
     const controller = new AbortController();
     Promise.resolve().then(() => {
       if (controller.signal.aborted) return {};
-      setMetadataLoading(true);
       setMetadataError("");
       return loadYoutubeMetadata(videoIds.split(","), null, controller.signal);
     })
       .then((next) => { if (!controller.signal.aborted) setMetadata((old) => ({ ...old, ...next })); })
-      .catch((err) => { if (!controller.signal.aborted) setMetadataError(err.message); })
-      .finally(() => { if (!controller.signal.aborted) setMetadataLoading(false); });
+      .catch((err) => { if (!controller.signal.aborted) setMetadataError(err.message); });
     return () => controller.abort();
   }, [isYoutubeFolder, videoIds, metadataRevision]);
 
@@ -78,7 +79,9 @@ export default function VideoLibrary({ isAdmin, WeverseVideos }) {
         if (result.error) throw result.error;
         const rows = Object.fromEntries((result.data || []).map((row) => [row.key, row.value]));
         setItems(parseYoutubeContents(rows[YOUTUBE_CONTENT_KEY]));
-        setFolderItems(parseVideoFolders(rows[VIDEO_FOLDERS_KEY]));
+        const nextFolders = parseVideoFolders(rows[VIDEO_FOLDERS_KEY]);
+        confirmedFolders = nextFolders;
+        setFolderItems(nextFolders);
         savedUpdatedAt.current = Object.fromEntries((result.data || []).map((row) => [row.key, row.updated_at]));
         exists.current = Object.fromEntries((result.data || []).map((row) => [row.key, true]));
         setError("");
@@ -104,7 +107,7 @@ export default function VideoLibrary({ isAdmin, WeverseVideos }) {
     if (!result.data?.length) throw new Error("다른 창에서 목록이 변경되었거나 저장 권한이 없습니다. 목록을 새로고침해주세요.");
     savedUpdatedAt.current[key] = result.data[0].updated_at;
     exists.current[key] = true;
-    if (key === VIDEO_FOLDERS_KEY) setFolderItems(nextItems);
+    if (key === VIDEO_FOLDERS_KEY) { confirmedFolders = nextItems; setFolderItems(nextItems); }
     else setItems(nextItems);
   }
 
@@ -169,14 +172,13 @@ export default function VideoLibrary({ isAdmin, WeverseVideos }) {
   function folderTree(parentId = null, depth = 0) {
     return folderItems.filter((item) => (item.parentId || null) === parentId && (isAdmin || item.autoTag !== "DM")).map((item) => <div className="video-folder-node" key={item.id}>
       <div className={`video-folder-row ${depth > 0 ? "is-child" : "is-root"}`}>
-      <button type="button" title={item.name} aria-pressed={folder === item.id} onClick={() => { setFolder(item.id); setPlayingId(null); setSearch(""); setFormOpen(false); setFolderDraft(null); }}><Folder size={16} /><span className="video-folder-name">{item.name}</span></button>
+      <button type="button" title={item.name} aria-pressed={folder === item.id} onClick={() => { setFolder(item.id); setPlayingId(null); setSearch(""); setStartDate(""); setEndDate(""); setFormOpen(false); setFolderDraft(null); }}><Folder size={16} /><span className="video-folder-name">{item.name}</span></button>
       {isAdmin && <button type="button" className="video-folder-icon" aria-label={`${item.name} 폴더 수정`} title="이름·위치 수정" disabled={loading || Boolean(error) || saving} onClick={() => { const siblings = folderItems.filter((other) => (other.parentId || null) === (item.parentId || null)); setFolderDraft({ name: item.name, parentId: item.parentId, id: item.id, beforeId: siblings[siblings.findIndex((other) => other.id === item.id) + 1]?.id || "" }); }}><Pencil size={14} /></button>}
       {isAdmin && !["youtube", "weverse"].includes(item.id) && !item.autoTag && <button type="button" className="video-folder-icon" aria-label={`${item.name} 폴더 삭제`} disabled={loading || Boolean(error) || saving} onClick={() => removeFolder(item.id)}><Trash2 size={14} /></button>}
       </div>
       {folderItems.some((child) => child.parentId === item.id) && <div className="video-folder-children">{folderTree(item.id, depth + 1)}</div>}
     </div>);
   }
-  const currentFolder = folderItems.find((item) => item.id === folder) || ROOT_VIDEO_FOLDERS[1];
   function folderLabel(item) {
     const names = [item.name];
     let parent = folderItems.find((old) => old.id === item.parentId);
@@ -184,7 +186,7 @@ export default function VideoLibrary({ isAdmin, WeverseVideos }) {
     return names.join(" / ");
   }
   const folders = <nav className="video-folders" aria-label="동영상 폴더">
-    <div className="video-folder-heading"><h2>폴더</h2>{isAdmin && <button className="video-folder-icon" type="button" aria-label="폴더 추가" disabled={loading || Boolean(error) || saving} onClick={() => setFolderDraft({ name: "", parentId: folder, id: null })}><Plus size={18} /></button>}</div>{folderTree()}
+    <div className="video-folder-heading"><h2>폴더</h2>{isAdmin && <button className="video-folder-icon" type="button" aria-label="폴더 추가" disabled={loading || Boolean(error) || saving} onClick={() => setFolderDraft({ name: "", parentId: folder, id: null })}><Plus size={18} /></button>}</div>{confirmedFolders && folderTree()}
   </nav>;
   const folderForm = folderDraft && <form className="youtube-form" onSubmit={saveFolder}>
     <h3>{folderDraft.id ? "폴더 수정" : "폴더 만들기"}</h3>
@@ -207,15 +209,12 @@ export default function VideoLibrary({ isAdmin, WeverseVideos }) {
   if (folderSource(folderItems, folder) === "live") return <WeverseLiveLibrary key={folder} isAdmin={isAdmin} folder={folder} folderItems={folderItems} sidebar={folders} folderForm={folderForm} items={items} persist={persist} loading={loading} error={error} />;
 
   const descendants = folderDescendants(folderItems, folder);
-  const filtered = sortYoutubeItems(items.filter((item) => descendants.has(item.folderId || "youtube") && item.title.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map((item) => ({ ...item, videoId: youtubeVideoId(item.url) })), metadata, sort);
+  const filtered = sortYoutubeItems(items.filter((item) => descendants.has(item.folderId || "youtube") && matchesVideoContent(search, item.title, youtubeKstDate(item.publishedAt)) && (!startDate || youtubeKstDate(metadata[youtubeVideoId(item.url)]?.publishedAt || item.publishedAt) >= startDate) && (!endDate || youtubeKstDate(metadata[youtubeVideoId(item.url)]?.publishedAt || item.publishedAt) <= endDate)).map((item) => ({ ...item, videoId: youtubeVideoId(item.url) })), metadata, sort);
   return <ArchiveLayout isAdmin={isAdmin} activeTab="videos" sidebarContent={folders} search={search} onSearchChange={setSearch} searchPlaceholder="유튜브 콘텐츠 제목을 검색해보세요">
     <div className="video-folders-mobile">{folders}</div>
     {folderForm}
-    <div className="youtube-heading"><div><h2>{currentFolder.name}</h2></div>
-      {isAdmin && <button type="button" disabled={loading || Boolean(error) || saving} onClick={() => { titleRequest.current += 1; titleEdited.current = false; setTitleStatus(""); setDraft({ ...emptyDraft, folderId: folder }); setEditingId(null); setFormOpen(true); }}>+ 콘텐츠 추가</button>}
-    </div>
-    <ArchiveSortControl value={sort} onChange={setSort} count={filtered.length} unit="개" />
-    {metadataLoading && <p className="youtube-status">업로드일·조회수를 불러오는 중…</p>}
+    <ArchiveFilters search={search} setSearch={setSearch} searchPlaceholder="검색어를 입력하세요" showType={false} startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate} allActive={!search.trim() && !startDate && !endDate} onAllClick={() => { setSearch(""); setStartDate(""); setEndDate(""); }} leadingControl={isAdmin ? <button type="button" className="filter-button youtube-add-content" disabled={loading || Boolean(error) || saving} onClick={() => { titleRequest.current += 1; titleEdited.current = false; setTitleStatus(""); setDraft({ ...emptyDraft, folderId: folder }); setEditingId(null); setFormOpen(true); }}><Plus size={16} strokeWidth={1.7} />콘텐츠 추가</button> : null} />
+    <ArchiveSortControl value={sort} onChange={setSort} count={filtered.length} unit="개" adminTotal={isAdmin ? items.filter((item) => descendants.has(item.folderId || "youtube")).length : undefined} />
     {metadataError && <div className="youtube-status" role="status">{isAdmin ? metadataError : "업로드일·조회수를 불러오지 못했습니다. 확인된 정보로 표시합니다."}<button type="button" onClick={() => setMetadataRevision((value) => value + 1)}>다시 시도</button></div>}
     {error && <div className="youtube-status" role="alert">{error}<button type="button" onClick={() => { setLoading(true); setRevision((value) => value + 1); }}>다시 불러오기</button></div>}
     {loading && <p className="youtube-status">콘텐츠를 불러오는 중...</p>}

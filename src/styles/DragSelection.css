@@ -1,0 +1,1 @@
+.drag-selection-box { position: fixed; z-index: 3000; pointer-events: none; box-sizing: border-box; border: 1px solid #36877f; background: rgba(100,100,100,.10); }

@@ -1,3 +1,4 @@
+import DiaryImage from "./DiaryImage";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
@@ -47,14 +48,6 @@ function Diary({ isAdmin = false }) {
       });
   }, []);
 
-  useEffect(() => {
-    if (!selectedPost) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [selectedPost]);
 
   async function loadDiary() {
     setLoading(true);
@@ -75,7 +68,6 @@ function Diary({ isAdmin = false }) {
       const postIds = diaryPosts.map((post) => post.id);
 
       // 미디어 조회가 실패해도 등록된 다이어리 게시글 자체는 먼저 표시한다.
-      setPosts(diaryPosts);
 
       if (!postIds.length) {
         setPosts([]);
@@ -97,6 +89,7 @@ function Diary({ isAdmin = false }) {
           .order("media_order", { ascending: true, nullsFirst: false }),
       ]);
 
+      setPosts(diaryPosts);
       if (photoResult.error) {
         console.error("다이어리 사진을 불러오지 못했습니다:", photoResult.error);
         setPhotos([]);
@@ -327,14 +320,9 @@ function Diary({ isAdmin = false }) {
           }}
         >
           {block.type === "photo" ? (
-            <img
-              src={item.image_url}
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
+            <DiaryImage key={item.id} photo={item} priority={orderedPhotos[0]?.id === item.id} />
           ) : (
-            <video src={item.video_url} poster={item.thumbnail_url || undefined} controls preload="metadata" />
+            <video src={item.video_url} poster={item.thumbnail_url || undefined} controls preload="none" />
           )}
         </div>
       );
@@ -346,18 +334,19 @@ function Diary({ isAdmin = false }) {
       <ArchiveLayout
         isAdmin={isAdmin}
         activeTab="diary"
+        onActiveTabClick={() => { setSelectedPost(null); setEditMode(false); }}
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="다이어리 제목이나 내용을 검색해보세요"
       >
-        <div className="diary-grid">
+        {!selectedPost && <div className="diary-grid">
           {loading && <div className="diary-empty">다이어리를 불러오는 중...</div>}
 
           {!loading && filteredPosts.length === 0 && (
             <div className="diary-empty">아직 등록된 다이어리가 없습니다.</div>
           )}
 
-          {filteredPosts.map((post) => {
+          {filteredPosts.map((post, postIndex) => {
             const cover = getCover(post);
             return (
               <article
@@ -370,7 +359,9 @@ function Diary({ isAdmin = false }) {
                     <img
                       src={cover}
                       alt=""
-                      loading="lazy"
+                      loading={postIndex < 3 ? "eager" : "lazy"}
+                      decoding="async"
+                      fetchPriority={postIndex === 0 ? "high" : "auto"}
                       style={{ objectPosition: getCoverPosition(post) }}
                     />
                   ) : (
@@ -388,19 +379,12 @@ function Diary({ isAdmin = false }) {
               </article>
             );
           })}
-        </div>
-      </ArchiveLayout>
+        </div>}
 
       {selectedPost && (
-        <div className="diary-modal" onClick={() => setSelectedPost(null)}>
-          <div className="diary-modal-content" onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              className="diary-modal-close"
-              onClick={() => setSelectedPost(null)}
-            >
-              ×
-            </button>
+        <section className="diary-post-detail" aria-label="다이어리 상세">
+            <button type="button" className="diary-post-back" onClick={() => { setSelectedPost(null); setEditMode(false); }}>← 목록으로</button>
+          <article className="diary-post-content">
 
             <header className="diary-modal-header">
               <h2>{selectedPost.diary_title || "제목 없는 다이어리"}</h2>
@@ -524,7 +508,7 @@ function Diary({ isAdmin = false }) {
                       className={`diary-fallback-photo ${editMode ? "diary-cover-selectable" : ""} ${editCoverId === `photo:${item.id}` ? "selected-cover" : ""}`}
                       onClick={() => { if (editMode) setEditCoverId(`photo:${item.id}`); }}
                     >
-                      <img src={item.image_url} alt="" loading="lazy" decoding="async" />
+                      <DiaryImage key={item.id} photo={item} priority={selectedMedia.find((media) => media.mediaKind === "photo")?.id === item.id} />
                     </button>
                   ) : (
                     <div
@@ -546,9 +530,10 @@ function Diary({ isAdmin = false }) {
               </div>
             )}
 
-          </div>
-        </div>
+          </article>
+        </section>
       )}
+      </ArchiveLayout>
       <ContentReport target={reportTarget} onClose={() => setReportTarget(null)} />
     </>
   );

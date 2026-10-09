@@ -16,7 +16,7 @@ export function getPhotoExtraGroups(photo) {
 
 export function isPhotoVisible(photo, extraSelection = {}, allowed = {}) {
   if (photo.archive_visible === false) return false;
-  if (["스크린샷", "같은사진"].includes(photo.type)) return false;
+  if (["스크린샷", "같은사진", "짤"].includes(photo.type)) return false;
   if (isDmMedia(photo) && allowed.dm !== true) return false;
   const groups = getPhotoExtraGroups(photo);
   const assigned = Object.keys(groups).filter((key) => groups[key]);

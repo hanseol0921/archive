@@ -1,3 +1,5 @@
+import { ArrowLeft } from "lucide-react";
+import useDragSelection from "./useDragSelection";
 import { useEffect, useRef, useState } from "react";
 
 import * as pdfjsLib from "pdfjs-dist";
@@ -6,8 +8,13 @@ import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { supabase } from "./supabaseClient";
 import { withVideoSourceTags } from "./videoClassification";
 import "./styles/App.css";
+import "./styles/ImportEditor.css";
+import { MEDIA_TYPES, VIDEO_TYPES, UNCLASSIFIED_TYPE } from "./mediaClassification";
 import TagPicker from "./TagPicker";
+import { mapConcurrent } from "./concurrentTasks";
+import { createLocalVideoThumbnail } from "./videoThumbnail";
 import { deleteFromR2, uploadToR2 } from "./r2Storage";
+import "./styles/AdminTools.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -29,12 +36,19 @@ function ArchiveImport() {
   const [importPage, setImportPage] = useState(1);
 
   const [bulkHairColor, setBulkHairColor] = useState("");
+  const [bulkVideoType, setBulkVideoType] = useState("");
+  const [bulkType, setBulkType] = useState("");
+  const [bulkTags, setBulkTags] = useState("");
+  const [selectedMedia, setSelectedMedia] = useState([]);
+  const [folderSelectionOpen, setFolderSelectionOpen] = useState(false);
   const [uploadingAll, setUploadingAll] = useState(false);
+  const { overlay: selectionOverlay, ...selectionHandlers } = useDragSelection({ selected: selectedMedia, onChange: setSelectedMedia, disabled: uploadingAll });
   const [uploadAllProgress, setUploadAllProgress] = useState("");
 
   const IMPORT_PAGE_SIZE = 50;
 
   const objectUrlsRef = useRef([]);
+  const activeUploads = useRef(new Set());
 
   // =========================
   // preview URL 정리
@@ -986,7 +1000,7 @@ function ArchiveImport() {
               ? {
                   ...item,
                   [field]: value,
-                  ...(field === "type" && ["스크린샷", "같은사진"].includes(value) ? { archiveVisible: false } : {}),
+                  ...(field === "type" && ["스크린샷", "같은사진", "짤"].includes(value) ? { archiveVisible: false } : {}),
                 }
               : item,
           ),
@@ -1104,20 +1118,15 @@ function ArchiveImport() {
       return;
     }
 
-    setDrafts((prev) =>
-      prev.map((draft) => {
-        if (draft.status === "uploaded") return draft;
+    applyBulkMedia((item) => ({ ...item, hairColor: bulkHairColor }));
+  }
 
-        return {
-          ...draft,
-          media: draft.media.map((item) =>
-            item.kind === "photo"
-              ? { ...item, hairColor: bulkHairColor }
-              : item,
-          ),
-        };
-      }),
-    );
+  const editableMedia = drafts.flatMap((draft) => ["uploaded", "uploading"].includes(draft.status) ? [] : draft.media.map((item) => `${draft.id}:${item.id}`));
+  const selectedEditable = selectedMedia.filter((id) => editableMedia.includes(id));
+  function applyBulkMedia(transform, kind = null) {
+    const targets = new Set(selectedEditable.length ? selectedEditable : editableMedia);
+    setDrafts((previous) => previous.map((draft) => ["uploaded", "uploading"].includes(draft.status) ? draft : { ...draft, media: draft.media.map((item) => targets.has(`${draft.id}:${item.id}`) && (!kind || item.kind === kind) ? transform(item) : item) }));
+    setSelectedMedia([]);
   }
 
   // =========================
@@ -1195,7 +1204,7 @@ function ArchiveImport() {
 
     if (!draft) return;
 
-    if (draft.status === "uploading") {
+    if (draft.status === "uploading" || activeUploads.current.size) {
       return;
     }
 
@@ -1203,6 +1212,7 @@ function ArchiveImport() {
       alert("게시 날짜가 없습니다.");
       return;
     }
+    activeUploads.current.add(draftId);
 
     // =========================
     // 상태 변경
@@ -1309,154 +1319,53 @@ function ArchiveImport() {
       // 미디어 순서대로 업로드
       // =========================
 
-      for (let index = 0; index < draft.media.length; index++) {
-        const item = draft.media[index];
-
-        const mediaOrder = index + 1;
-
-        // =====================
-        // 사진
-        // =====================
-
-        if (item.kind === "photo") {
-          const path = `${draft.postDate}/${createdPostId}/${safeFileName(
-            item.file.name,
-          )}`;
-
-          const { publicUrl: imageUrl } = await uploadToR2(
-            "photos",
-            path,
-            item.file,
-          );
-
-          uploadedFiles.push({
-            bucket: "photos",
-            path,
-          });
-
-          // =====================
-          // 목록용 썸네일 생성 + 업로드
-          // =====================
-
-          const thumbnailBlob = await createPhotoThumbnail(item.file);
-
-          const thumbnailPath = `${draft.postDate}/${createdPostId}/thumbnails/${makeId()}.webp`;
-
-          const { publicUrl: thumbnailUrl } = await uploadToR2(
-            "photos",
-            thumbnailPath,
-            thumbnailBlob,
-            "image/webp",
-          );
-
-          uploadedFiles.push({
-            bucket: "photos",
-            path: thumbnailPath,
-          });
-
-          const { error: insertError } = await supabase.from("photos").insert({
-            post_id: createdPostId,
-
-            image_url: imageUrl,
-
-            thumbnail_url: thumbnailUrl,
-
-            date: draft.postDate,
-
-            type: item.type || null,
-
-            hair_color: item.hairColor || null,
-
-            archive_visible: !["스크린샷", "같은사진"].includes(item.type) && item.archiveVisible !== false,
-
-            tags: (item.tags || "")
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean),
-
-            search_tags: (item.searchTags || "")
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean),
-
-            weverse_url: draft.postWeverseUrl || null,
-
-            crop_position: `${item.cropX}% ${item.cropY}%`,
-
-            media_order: mediaOrder,
-
-            upload_order: nextUploadOrder,
-          });
-
-          if (insertError) {
-            throw insertError;
-          }
-
-          nextUploadOrder++;
+      let completedMedia = 0;
+      const records = await mapConcurrent(draft.media, 2, async (item, index) => {
+        const photo = item.kind === "photo";
+        const bucket = photo ? "photos" : "videos";
+        const uploadOrder = photo ? nextUploadOrder++ : null;
+        const path = `${draft.postDate}/${createdPostId}/${safeFileName(item.file.name)}`;
+        async function transfer(path, file, contentType) {
+          const result = await uploadToR2(bucket, path, file, contentType);
+          uploadedFiles.push({ bucket, path });
+          return result.publicUrl;
         }
-
-        // =====================
-        // 동영상
-        // =====================
-
-        if (item.kind === "video") {
-          const path = `${draft.postDate}/${createdPostId}/${safeFileName(
-            item.file.name,
-          )}`;
-
-          const { publicUrl: videoUrl } = await uploadToR2(
-            "videos",
-            path,
-            item.file,
-          );
-
-          uploadedFiles.push({
-            bucket: "videos",
-            path,
-          });
-
-          let thumbnailUrl = null;
-
-          /*
-            현재 videos 테이블의
-            thumbnail_url은
-            그대로 사용할 수 있게 둠.
-
-            썸네일을 Storage에 따로
-            올리고 싶으면 다음 단계에서
-            붙이면 됨.
-          */
-
-          const { error: insertError } = await supabase.from("videos").insert({
-            post_id: createdPostId,
-
-            video_url: videoUrl,
-
-            thumbnail_url: thumbnailUrl,
-
-            type: item.type || null,
-
-            tags: withVideoSourceTags({
-              type: item.type,
-              tags: (item.tags || "").split(",").map((tag) => tag.trim()).filter(Boolean),
-              search_tags: (item.searchTags || "").split(",").map((tag) => tag.trim()).filter(Boolean),
-            }, { weverse_url: draft.postWeverseUrl }, draft.folderPath).tags,
-
-            search_tags: (item.searchTags || "")
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean),
-
-            crop_position: `${item.cropX}% ${item.cropY}%`,
-
-            media_order: mediaOrder,
-          });
-
-          if (insertError) {
-            throw insertError;
-          }
-        }
-      }
+        // Original transfer and thumbnail preparation run together; both settle before cleanup.
+        const results = await Promise.allSettled([
+          transfer(path, item.file),
+          (async () => {
+            const blob = photo ? await createPhotoThumbnail(item.file)
+              : item.thumbnailFile ? await createPhotoThumbnail(item.thumbnailFile)
+              : await createLocalVideoThumbnail(item.file).catch(() => null);
+            if (!blob) return null;
+            return transfer(`${draft.postDate}/${createdPostId}/thumbnails/${makeId()}.webp`, blob, "image/webp");
+          })(),
+        ]);
+        const failed = results.find((result) => result.status === "rejected");
+        if (failed) throw failed.reason;
+        completedMedia++;
+        updateDraft(draftId, "uploadProgress", `파일 ${completedMedia} / ${draft.media.length}`);
+        const common = {
+          post_id: createdPostId, thumbnail_url: results[1].value, type: item.type || UNCLASSIFIED_TYPE,
+          ...(!photo && item.overlayText?.trim() ? { overlay_text: item.overlayText.trim() } : {}),
+          hair_color: item.hairColor || null,
+          tags: withVideoSourceTags({ ...item, tags: (item.tags || "").split(",").map((tag) => tag.trim()).filter(Boolean) }, { weverse_url: draft.postWeverseUrl }, draft.folderPath).tags,
+          search_tags: (item.searchTags || "").split(",").map((tag) => tag.trim()).filter(Boolean),
+          crop_position: `${item.cropX}% ${item.cropY}%`, media_order: index + 1,
+        };
+        return { table: photo ? "photos" : "videos", row: photo ? {
+          ...common, image_url: results[0].value, date: draft.postDate, upload_order: uploadOrder,
+          archive_visible: !["스크린샷", "같은사진", "짤"].includes(item.type) && item.archiveVisible !== false,
+          weverse_url: draft.postWeverseUrl || null,
+        } : { ...common, video_url: results[0].value } };
+      });
+      updateDraft(draftId, "uploadProgress", "자료 정보 저장 중…");
+      await mapConcurrent(["photos", "videos"], 2, async (table) => {
+        const rows = records.filter((record) => record.table === table).map((record) => record.row);
+        if (!rows.length) return;
+        const { error } = await supabase.from(table).insert(rows);
+        if (error) throw error;
+      });
 
       // =========================
       // 완료
@@ -1473,16 +1382,17 @@ function ArchiveImport() {
       // 실패 rollback
       // =========================
 
-      await removeUploadedFiles(uploadedFiles);
-
-      if (createdPostId) {
-        // 중간에 생성된 미디어 DB 정리
-        await supabase.from("photos").delete().eq("post_id", createdPostId);
-
-        await supabase.from("videos").delete().eq("post_id", createdPostId);
-
-        await supabase.from("weverse_posts").delete().eq("id", createdPostId);
-      }
+      const cleanup = await Promise.allSettled([
+        removeUploadedFiles(uploadedFiles),
+        (async () => {
+          if (!createdPostId) return;
+          for (const table of ["photos", "videos", "weverse_posts"]) {
+            const { error } = table === "weverse_posts" ? await supabase.from(table).delete().eq("id", createdPostId) : await supabase.from(table).delete().eq("post_id", createdPostId);
+            if (error) throw error;
+          }
+        })(),
+      ]);
+      const cleanupFailed = cleanup.some((result) => result.status === "rejected");
 
       setDrafts((prev) =>
         prev.map((item) =>
@@ -1490,13 +1400,15 @@ function ArchiveImport() {
             ? {
                 ...item,
                 status: "error",
-                error: error.message,
+                error: `${error.message}${cleanupFailed ? " · 일부 업로드 자료 정리에 실패했습니다. 중복 자료를 확인해주세요." : ""}`,
               }
             : item,
         ),
       );
 
       return false;
+    } finally {
+      activeUploads.current.delete(draftId);
     }
   }
 
@@ -1505,7 +1417,7 @@ function ArchiveImport() {
   // =========================
 
   async function uploadAllDrafts() {
-    if (uploadingAll) return;
+    if (uploadingAll || activeUploads.current.size) return;
 
     const pendingDrafts = drafts.filter(
       (draft) => draft.status !== "uploaded" && draft.status !== "uploading",
@@ -1566,20 +1478,21 @@ function ArchiveImport() {
   // =========================
 
   return (
-    <div className="archive-import-page">
+    <div className={`archive-import-page ${drafts.length ? "import-editor-page" : ""}`}>
+      <aside className="import-editor-sidebar">
       <div className="archive-import-top">
         <div className="archive-import-header">
           <button
             type="button"
-            className="archive-import-back-button"
+            className="archive-import-back-button admin-tools-back" aria-label="설정으로 돌아가기" title="설정으로 돌아가기"
             onClick={() => {
-              window.location.href = "/admin";
+              window.location.href = "/admin/settings";
             }}
           >
-            ← 뒤로가기
+            <ArrowLeft size={18} aria-hidden="true" />
           </button>
 
-          <h1>아카이브 가져오기</h1>
+          <h1>백업 가져오기</h1>
         </div>
 
         <p>
@@ -1605,7 +1518,8 @@ function ArchiveImport() {
     발견된 게시글 폴더 선택
 ========================= */}
 
-        {foundGroups.length > 0 && (
+        {drafts.length > 0 && foundGroups.length > 0 && <button type="button" disabled={uploadingAll} onClick={() => setFolderSelectionOpen((open) => !open)}>{folderSelectionOpen ? "폴더 선택 닫기" : "게시글 폴더 추가 선택"}</button>}
+        {foundGroups.length > 0 && (!drafts.length || folderSelectionOpen) && (
           <div className="import-folder-selector">
             <div className="import-folder-selector-header">
               <div>
@@ -1718,12 +1632,16 @@ function ArchiveImport() {
       ========================= */}
       {drafts.length > 0 && (
         <div className="archive-draft-list-header">
-          <span>불러온 게시글 {drafts.length}개</span>
+          <strong>일괄 편집</strong><span>불러온 게시글 {drafts.length}개 · {selectedEditable.length}개 선택</span>
 
           <div
             className="archive-import-bulk-actions"
             style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
           >
+            <div className="import-editor-selection"><button type="button" disabled={uploadingAll} onClick={() => setSelectedMedia(editableMedia)}>전체 선택</button><button type="button" disabled={uploadingAll} onClick={() => setSelectedMedia([])}>선택 해제</button></div>
+            <select aria-label="일괄 사진 유형" value={bulkType} disabled={uploadingAll} onChange={(event) => setBulkType(event.target.value)}><option value="">사진 유형 선택</option><option value="unset">선택 안됨</option>{MEDIA_TYPES.map((type) => <option key={type}>{type}</option>)}</select>
+            <button type="button" disabled={uploadingAll || !bulkType} onClick={() => applyBulkMedia((item) => ({ ...item, type: bulkType === "unset" ? "" : bulkType, ...(["스크린샷", "같은사진", "짤"].includes(bulkType) ? { archiveVisible: false } : {}) }), "photo")}>{selectedEditable.length ? "선택 사진 유형 적용" : "전체 사진 유형 적용"}</button>
+            <select aria-label="일괄 동영상 유형" value={bulkVideoType} disabled={uploadingAll} onChange={(event) => setBulkVideoType(event.target.value)}><option value="">동영상 유형 선택</option><option value="unset">선택 안됨</option>{VIDEO_TYPES.map((type) => <option key={type}>{type}</option>)}</select><button type="button" disabled={uploadingAll || !bulkVideoType} onClick={() => applyBulkMedia((item) => ({ ...item, type: bulkVideoType === "unset" ? "" : bulkVideoType }), "video")}>{selectedEditable.length ? "선택 동영상 유형 적용" : "전체 동영상 유형 적용"}</button>
             <select
               value={bulkHairColor}
               disabled={uploadingAll}
@@ -1746,8 +1664,10 @@ function ArchiveImport() {
               disabled={!bulkHairColor || uploadingAll}
               onClick={applyHairColorToAllPhotos}
             >
-              전체 사진에 적용
+              {selectedEditable.length ? "선택 머리색 적용" : "전체 머리색 적용"}
             </button>
+            <TagPicker disabled={uploadingAll} value={bulkTags} onChange={setBulkTags} placeholder="일괄 추가할 태그" />
+            <button type="button" disabled={uploadingAll || !bulkTags.trim()} onClick={() => applyBulkMedia((item) => ({ ...item, tags: [...new Set(`${item.tags || ""},${bulkTags}`.split(",").map((tag) => tag.trim()).filter(Boolean))].join(", ") }))}>{selectedEditable.length ? "선택 태그 적용" : "전체 태그 적용"}</button>
 
             <button
               type="button"
@@ -1768,6 +1688,9 @@ function ArchiveImport() {
           </div>
         </div>
       )}
+      </aside>
+      {selectionOverlay}
+      <section {...selectionHandlers} className="import-editor-workspace" aria-label="가져온 자료 상세 설정">
       <div className="archive-draft-list">
         {drafts.map((draft) => (
           <section className="archive-draft-card" key={draft.id}>
@@ -1785,7 +1708,7 @@ function ArchiveImport() {
               <div className={`archive-draft-status ${draft.status}`}>
                 {draft.status === "draft" && "작성 중"}
 
-                {draft.status === "uploading" && "업로드 중..."}
+                {draft.status === "uploading" && (draft.uploadProgress || "업로드 중...")}
 
                 {draft.status === "uploaded" && "✓ 업로드 완료"}
 
@@ -1857,18 +1780,6 @@ function ArchiveImport() {
               />
             </label>
 
-            <label className="archive-draft-full-field">
-              원본 링크
-              <input
-                type="url"
-                value={draft.postWeverseUrl}
-                disabled={draft.status === "uploaded"}
-                onChange={(e) =>
-                  updateDraft(draft.id, "postWeverseUrl", e.target.value)
-                }
-              />
-            </label>
-
             {/* =====================
                   미디어
               ===================== */}
@@ -1886,7 +1797,8 @@ function ArchiveImport() {
 
             <div className="archive-import-media-list">
               {draft.media.map((item, index) => (
-                <div className="archive-import-media" key={item.id}>
+                <div className="archive-import-media" key={item.id} data-drag-select-id={["uploaded", "uploading"].includes(draft.status) ? undefined : `${draft.id}:${item.id}`}>
+                  <label className="import-editor-card-select"><input type="checkbox" aria-label={`${index + 1}번 자료 선택`} checked={selectedEditable.includes(`${draft.id}:${item.id}`)} disabled={uploadingAll || ["uploaded", "uploading"].includes(draft.status)} onChange={(event) => setSelectedMedia((old) => event.target.checked ? [...old, `${draft.id}:${item.id}`] : old.filter((id) => id !== `${draft.id}:${item.id}`))} /></label>
                   <div className="archive-import-media-preview">
                     {item.kind === "photo" ? (
                       <img src={item.previewUrl} alt="" />
@@ -1895,6 +1807,7 @@ function ArchiveImport() {
                         src={item.previewUrl}
                         poster={item.thumbnailPreviewUrl || undefined}
                         controls
+                        preload="none"
                       />
                     )}
                   </div>
@@ -1929,7 +1842,7 @@ function ArchiveImport() {
 
                           <option value="거울셀카">거울셀카</option>
 
-                          <option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
+                          <option value="짤">짤</option><option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
                         </select>
 
                         <select
@@ -1960,7 +1873,7 @@ function ArchiveImport() {
                           <input
                             type="checkbox"
                             checked={item.archiveVisible !== false}
-                            disabled={draft.status === "uploaded"}
+                            disabled={draft.status === "uploaded" || ["스크린샷", "같은사진", "짤"].includes(item.type)}
                             onChange={(e) =>
                               updateMedia(
                                 draft.id,
@@ -1989,6 +1902,9 @@ function ArchiveImport() {
 
                     {item.kind === "video" && (
                       <>
+                        <select aria-label="동영상 유형" value={item.type || ""} disabled={draft.status === "uploaded"} onChange={(event) => updateMedia(draft.id, item.id, "type", event.target.value)}><option value="">선택 안됨</option>{VIDEO_TYPES.map((type) => <option key={type}>{type}</option>)}</select>
+                        <label>영상 위 텍스트<textarea rows={3} maxLength={5000} value={item.overlayText || ""} disabled={draft.status === "uploaded"} onChange={(event) => updateMedia(draft.id, item.id, "overlayText", event.target.value)} placeholder="모먼트 영상 위 텍스트" /></label>
+                        <select aria-label="동영상 머리색" value={item.hairColor || ""} disabled={draft.status === "uploaded"} onChange={(event) => updateMedia(draft.id, item.id, "hairColor", event.target.value)}><option value="">머리색 선택</option>{["흑발", "갈발", "금발", "적발", "은발", "핑머", "주머", "와인", "베이지"].map((color) => <option key={color}>{color}</option>)}</select>
 
                         <label style={{ display: "grid", gap: "4px" }}>
                           동영상 태그
@@ -2093,6 +2009,7 @@ function ArchiveImport() {
           </section>
         ))}
       </div>
+      </section>
     </div>
   );
 }

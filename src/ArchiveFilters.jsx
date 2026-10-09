@@ -67,6 +67,8 @@ function ArchiveFilters({
   setEndDate,
   typeLabel = "유형",
   showType = true,
+  leadingControl,
+  typeOptions: customTypeOptions,
   showAdminPhotoTypes = false,
   secondaryValue = "전체",
   setSecondaryValue,
@@ -97,7 +99,7 @@ function ArchiveFilters({
   useEffect(() => {
     if (allExtrasRef.current) allExtrasRef.current.indeterminate = someExtrasChecked && !allExtrasChecked;
   }, [someExtrasChecked, allExtrasChecked, filterPanelOpen]);
-  const typeOptions = ["전체", "선택 안됨", "셀카", "남찍사", "거울셀카", ...(showAdminPhotoTypes ? ["리우뷰", "스크린샷", "같은사진"] : [])];
+  const typeOptions = customTypeOptions || ["전체", "선택 안됨", "셀카", "남찍사", "거울셀카", "짤", ...(showAdminPhotoTypes ? ["리우뷰", "스크린샷", "같은사진"] : [])];
   const hasActiveFilters = type !== "전체"
     || secondaryValue !== "전체"
     || tertiaryValue !== "전체"
@@ -133,7 +135,7 @@ function ArchiveFilters({
 
   return (
     <div className="filter-bar" ref={barRef}>
-      <div className="filter-panel-wrap" ref={filterPanelRef}>
+      {leadingControl !== undefined ? leadingControl : <div className="filter-panel-wrap" ref={filterPanelRef}>
         <button
           type="button"
           className={`filter-slider-button ${hasActiveFilters ? "has-active-filter" : ""}`}
@@ -213,7 +215,7 @@ function ArchiveFilters({
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* 전체 */}
       <button

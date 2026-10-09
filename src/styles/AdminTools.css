@@ -1,0 +1,56 @@
+/* Shared typography and controls for archive administration tools. */
+body:has(.archive-import-page), body:has(.scraper-control-page) { background: #f6f6f6; }
+body :is(.archive-import-page, .scraper-control-page) { color: #4b5553; font-size: 14px; }
+body :is(.archive-import-page, .scraper-control-page) :is(p, li, input, textarea, select, button) { font-size: 14px !important; }
+body :is(.archive-import-page, .scraper-control-page) :is(small, label, .input-help, .section-help, .archive-draft-path) { font-size: 12px !important; }
+body :is(.archive-import-page, .scraper-control-page) h1 { font-size: 20px !important; }
+body :is(.archive-import-page, .scraper-control-page) :is(h2, h3) { font-size: 16px !important; }
+body :is(.photo-manager-sidebar, .import-editor-sidebar) :is(p, button, input, select, label) { font-size: 12px !important; }
+body .archive-import-page .archive-import-header h1 { font-size: 20px !important; }
+body .archive-import-page .archive-import-media-info :is(strong, span) { font-size: 12px; }
+body .archive-import-page :is(.archive-import-top, .archive-draft-card) { border-color: #d9e2e0; box-shadow: none; }
+body .archive-import-page .folder-import-button { background: #f6f6f6 !important; border-color: #9fc8bf !important; color: #36877f !important; }
+body .archive-import-page .archive-import-back-button { border-color: #ccd8d5 !important; color: #596561 !important; }
+body :is(.archive-import-page, .scraper-control-page) :is(input, textarea, select) { accent-color: #36877f; }
+body :is(.archive-import-page, .scraper-control-page) :is(button, a):focus-visible { outline: 2px solid #36877f; outline-offset: 2px; }
+.scraper-control-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 17px; border: 1px solid #ccd8d5; border-radius: 8px; background: white; color: #36877f; font-size: 14px; text-decoration: none; box-sizing: border-box; }
+.scraper-control-guide code { font-size: 12px; }
+
+/* Compact navigation and flat sections: the workspace panels supply the boundary. */
+body :is(.archive-import-page, .scraper-control-page) .admin-tools-back {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 28px;
+  width: 28px; min-width: 28px; height: 28px; min-height: 28px;
+  margin: 0; padding: 0 !important; border: 0 !important; border-radius: 5px !important;
+  background: transparent !important; color: #596561; cursor: pointer;
+}
+body :is(.archive-import-page, .scraper-control-page) .admin-tools-back:hover { background: #f6f6f6 !important; }
+body .archive-import-page .archive-import-top { padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+body .archive-import-page .archive-import-header { display: flex !important; flex-wrap: nowrap; gap: 8px !important; margin: 0 0 10px !important; }
+body .archive-import-page .archive-import-header h1 { flex: 1; min-width: 0; width: auto; margin: 0 !important; letter-spacing: -0.025em; }
+body .archive-import-page .archive-import-top > p { margin: 0 0 12px !important; font-size: 12px !important; color: #7b8582 !important; }
+.photo-manager-sidebar, .import-editor-page .import-editor-sidebar { padding: 14px; gap: 16px; }
+body .photo-manager-sidebar .photo-manager-month-toolbar { margin-top: 0; gap: 8px; }
+.photo-manager-month-toolbar > label { display: flex; align-items: center; gap: 8px; }
+.photo-manager-month-toolbar > label input[type="month"] { flex: 1; min-width: 0; }
+body .photo-manager-sidebar .media-manager-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.photo-manager-sidebar .media-manager-filters label { display: grid; gap: 4px; }
+body .photo-manager-sidebar :is(select,input[type="month"]) { width: 100%; height: 32px; min-height: 32px; padding: 4px 8px; border: 1px solid #d9e2e0; border-radius: 5px; background: white; box-sizing: border-box; }
+body .photo-manager-sidebar :is(.photo-manager-month-toolbar > button,.photo-manager-bulk-bar > button,.photo-manager-bulk-type > button,.photo-manager-bulk-field > button) { height: 30px; min-height: 30px; padding: 4px 9px; border: 1px solid #cddbd6; border-radius: 5px; background: #f6f6f6; color: #42645b; box-sizing: border-box; cursor: pointer; }
+body .photo-manager-sidebar .photo-manager-bulk-bar { padding: 12px 0 0; gap: 8px; border: 0; border-top: 1px solid #e3e9e6; border-radius: 0; background: transparent; }
+body .photo-manager-sidebar .photo-manager-bulk-heading { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 0; margin-bottom: 4px; border: 0; }
+body .photo-manager-sidebar .photo-manager-bulk-heading button { min-height: 26px; padding: 3px 0; border: 0; background: transparent; color: #36877f; text-align: left; cursor: pointer; }
+body .photo-manager-sidebar .photo-manager-bulk-heading button:last-child { text-align: right; }
+body .archive-import-page .folder-import-button { min-height: 48px !important; margin-top: 0 !important; padding: 10px !important; border-radius: 6px !important; }
+body .import-editor-page .folder-import-button { min-height: 36px !important; padding: 6px 10px !important; }
+body .import-editor-page .archive-import-bulk-actions :is(select,button) { min-height: 30px; padding: 4px 8px; border: 1px solid #d9e2e0; border-radius: 5px; background: white; box-sizing: border-box; }
+body .import-editor-page .archive-draft-list-header { padding-top: 12px; border-top: 1px solid #e3e9e6; }
+.scraper-control-page { padding: 28px 24px 40px; box-sizing: border-box; }
+.scraper-control-header { align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+.scraper-control-header h1 { margin: 2px 0 6px; }
+body .scraper-control-card { padding: 20px; border: 0; border-radius: 8px; box-shadow: none; }
+.scraper-control-status { margin-bottom: 12px; }
+body .scraper-control-actions :is(button,a) { min-height: 34px; padding: 6px 12px; border-radius: 5px; box-sizing: border-box; }
+.scraper-control-offline { padding: 12px; margin-bottom: 12px; border-radius: 6px; }
+.scraper-control-guide { margin: 16px 0; padding-left: 18px; }
+.scraper-control-log { padding: 12px; border-radius: 6px; }
+@media(max-width:600px) { .scraper-control-page { padding: 16px 12px 24px; } .scraper-control-header { display: flex; } .scraper-control-header .admin-tools-back { margin-bottom: 0; } body .scraper-control-card { padding: 14px; } }

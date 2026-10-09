@@ -37,3 +37,5 @@ test("food/scenery conversion leaves dogs and DM unchanged", () => {
   for (const tag of ["짱대박", "짱이", "대박이", "DM"]) assert.equal(shouldMigrateToRiwooView({ tags: ["음식", tag] }), false);
   assert.equal(shouldMigrateToRiwooView({ tags: ["풍경"], dm_asset_id: "asset" }), false);
 });
+
+test("meme photos stay hidden regardless of extra selection", () => { assert.equal(isPhotoVisible({type:"짤",archive_visible:true,tags:["음식"]},{food:true},{food:true}),false); });

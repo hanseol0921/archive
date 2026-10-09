@@ -248,6 +248,12 @@
 }
 /* 사진 아카이브 표시 여부 */
 .archive-visible-toggle {
+  align-self: start;
+  justify-self: start;
+  width: fit-content !important;
+  min-height: 0;
+  height: auto;
+  padding: 0;
   display: flex !important;
   flex-direction: row !important;
   align-items: center;
@@ -258,8 +264,13 @@
   color: #777268;
 }
 .archive-visible-toggle input[type="checkbox"] {
-  width: 15px !important;
-  height: 15px !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px;
+  max-height: 16px;
+  padding: 0;
   margin: 0;
   flex: 0 0 auto;
 }
@@ -297,3 +308,5 @@
     font-size: 22px;
   }
 }
+
+.archive-visible-toggle input[type="checkbox"]:focus { box-shadow: none; }

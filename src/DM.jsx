@@ -8,6 +8,12 @@ import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing } fro
 import DMProfileHistory from './DMProfileHistory';
 import { profileCrop, cropStyle } from './profileCrop';
 
+// Keep only room/profile metadata in memory, never message bodies.
+const dmHeaderCache = new Map();
+supabase.auth.onAuthStateChange(event => {
+  if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') dmHeaderCache.clear();
+});
+
 function dateLabel(value) {
   return new Date(value).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' });
 }
@@ -33,14 +39,16 @@ function MessageBody({ message }) {
 }
 
 export default function DM({ isAdmin = false }) {
-  const [rooms, setRooms] = useState([]);
-  const [roomId, setRoomId] = useState('');
-  const [profiles, setProfiles] = useState([]);
+  const [rooms, setRooms] = useState(() => dmHeaderCache.get(isAdmin)?.rooms || []);
+  const [roomId, setRoomId] = useState(() => dmHeaderCache.get(isAdmin)?.rooms?.[0]?.id || '');
+  const [profiles, setProfiles] = useState(() => dmHeaderCache.get(isAdmin)?.profiles || []);
   const [messages, setMessages] = useState([]);
   const [search, setSearch] = useState('');
   const [date, setDate] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [readyRoom, setReadyRoom] = useState(null);
+  const metadata = useRef(null);
   const [more, setMore] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState(null);
@@ -56,22 +64,38 @@ export default function DM({ isAdmin = false }) {
     let active = true;
     supabase.from('dm_rooms').select('*').order('artist_name').then(({ data, error: e }) => {
       if (!active) return;
-      if (e) setError(e.message);
-      else { setRooms(data || []); setRoomId(data?.[0]?.id || ''); }
+      if (e) { setError(e.message); setLoading(false); setReadyRoom(''); }
+      else { dmHeaderCache.set(isAdmin, { rooms: data || [], profiles: dmHeaderCache.get(isAdmin)?.profiles || [] }); setRooms(data || []); setRoomId(current => data?.some(room => room.id === current) ? current : data?.[0]?.id || ''); if (!data?.length) { setLoading(false); setReadyRoom(''); } }
     });
     return () => { active = false; };
-  }, []);
+  }, [isAdmin]);
 
   const load = useCallback(async (older = false, all = false) => {
     if (!roomId || (older && requestPending.current)) return;
     const version = older ? generation.current : ++generation.current;
     requestPending.current = true;
     setLoading(true); setError('');
-    if (!older) setMessages([]);
+    // Keep the current results visible while refreshing or searching.
     const previousHeight = timeline.current?.scrollHeight || 0;
     const previousTop = timeline.current?.scrollTop || 0;
     try {
-    const result = await collectDMPages(async c => {
+    if (!metadata.current || metadata.current.roomId !== roomId) {
+      metadata.current = { roomId, promise: Promise.all([
+        supabase.from('dm_profiles').select('*').eq('room_id', roomId).order('observed_at', { ascending: false }),
+        supabase.from('dm_profile_overrides').select('*').eq('room_id', roomId).order('created_at', { ascending: false }),
+      ]).then(results => {
+        for (const response of results) if (response.error) throw response.error;
+        if (version === generation.current) {
+          const nextProfiles = results[0].data || [];
+          setProfiles(nextProfiles);
+          setOverrides(results[1].data || []);
+          const cached = dmHeaderCache.get(isAdmin);
+          dmHeaderCache.set(isAdmin, { rooms: cached?.rooms || [], profiles: [...(cached?.profiles || []).filter(p => p.room_id !== roomId), ...nextProfiles] });
+        }
+        return results;
+      }) };
+    }
+    const [result, profileResults] = await Promise.all([collectDMPages(async c => {
     let query = supabase.from('dm_messages').select('*').eq('room_id', roomId)
       .order('sent_at', { ascending: false }).order('id', { ascending: false }).limit(100);
     if (search.trim()) query = query.ilike('text', `%${search.trim().replace(/[\\%_]/g, '\\$&')}%`);
@@ -86,8 +110,12 @@ export default function DM({ isAdmin = false }) {
     if (e) throw e;
     if (version !== generation.current) throw new Error('Cancelled');
     return data || [];
-    }, older ? cursor.current : null, all);
+    }, older ? cursor.current : null, all), metadata.current.promise]);
+    for (const response of profileResults) if (response.error) throw response.error;
     if (version !== generation.current) return;
+    setProfiles(profileResults[0].data || []);
+    setOverrides(profileResults[1].data || []);
+    setReadyRoom(roomId);
     requestPending.current = false; setLoading(false);
     const rows = result.rows;
     cursor.current = result.cursor;
@@ -103,18 +131,18 @@ export default function DM({ isAdmin = false }) {
     });
     } catch (e) {
       if (version !== generation.current) return;
-      requestPending.current = false; setLoading(false); setError(e.message);
+      requestPending.current = false; setLoading(false); setError(e.message); setReadyRoom(roomId); metadata.current = null;
     }
-  }, [roomId, search, date]);
+  }, [roomId, search, date, isAdmin]);
 
   useEffect(() => {
-    const timer = setTimeout(() => { cursor.current = null; load(); }, 250);
+    const timer = setTimeout(() => { cursor.current = null; load(); }, search.trim() ? 250 : 0);
     return () => { clearTimeout(timer); generation.current += 1; };
-  }, [load]);
+  }, [load, search]);
 
   useEffect(() => {
     let active = true;
-    if (roomId) collectDMPages(async c => {
+    if (profileOpen && roomId) collectDMPages(async c => {
       let query = supabase.from('dm_messages').select('*').eq('room_id',roomId)
         .order('sent_at',{ascending:false}).order('id',{ascending:false}).limit(100);
       if(c) query=query.or(`sent_at.lt.${c.sent_at},and(sent_at.eq.${c.sent_at},id.lt.${c.id})`);
@@ -123,16 +151,10 @@ export default function DM({ isAdmin = false }) {
       return data || [];
     },null,true).then(result=>{if(active)setAllMessages(result.rows.sort((a,b)=>Date.parse(a.sent_at)-Date.parse(b.sent_at)||a.id.localeCompare(b.id)));})
       .catch(e=>{if(active)setError(e.message);});
-    if (roomId) supabase.from('dm_profile_overrides').select('*').eq('room_id', roomId)
-      .order('created_at', { ascending: false }).then(({ data }) => { if (active) setOverrides(data || []); });
-    if (roomId) supabase.from('dm_profiles').select('*').eq('room_id', roomId)
-      .order('observed_at', { ascending: false }).then(({ data, error: e }) => {
-        if (!active) return;
-        if (e) setError(e.message); else setProfiles(data || []);
-      });
     return () => { active = false; };
-  }, [roomId]);
+  }, [roomId, profileOpen]);
 
+  const contentReady = readyRoom === roomId;
   const room = rooms.find(r => r.id === roomId);
   const roomProfiles = profiles.filter(p => p.room_id === roomId);
   const profile = roomProfiles[0];
@@ -157,7 +179,8 @@ export default function DM({ isAdmin = false }) {
         {isAdmin && <a href="/admin/dm/import" title="DM 가져오기" aria-label="DM 가져오기"><Upload size={18} /></a>}
       </header>
       {error && <p className="dm-error" role="alert">{error}</p>}
-      <div className="dm-timeline" ref={timeline} aria-busy={loading}>
+      <div className={`dm-timeline${!contentReady || !messages.length ? " dm-timeline-empty" : ""}`} ref={timeline} aria-busy={loading}>
+        {!contentReady ? <p className="dm-empty" role="status">불러오는 중</p> : <>
         {more && <button className="dm-older" disabled={loading} onClick={() => load(true)}>이전 메시지</button>}
         {!messages.length && <p className="dm-empty">{loading ? '불러오는 중' : '저장된 메시지가 없습니다.'}</p>}
         {chatRows.map((m, i) => {
@@ -183,10 +206,11 @@ export default function DM({ isAdmin = false }) {
             <time dateTime={m.sent_at}>{new Date(m.sent_at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}</time>
           </article>
         </div>; })}
+        </>}
       </div>
     </section>
     {profileOpen && <DMProfileHistory history={history} selected={selectedProfile} message={selectedMessage} rangeMessages={rangeMessages.length ? rangeMessages : chatRows}
       room={room} isAdmin={isAdmin} onClose={() => setProfileOpen(false)}
-      onSaved={p => setOverrides(current => [p,...current])} />}
+      onSaved={p => { metadata.current = null; setOverrides(current => [p,...current]); }} />}
   </ArchiveLayout>;
 }

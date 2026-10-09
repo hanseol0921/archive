@@ -1,4 +1,4 @@
-import { isUnclassifiedType } from "./mediaClassification.js";
+import { isUnclassifiedType, UNCLASSIFIED_TYPE } from "./mediaClassification.js";
 import { withVideoSourceTags } from "./videoClassification.js";
 
 export const splitMediaTags = (value) => [...new Set(String(value || "").split(",").map((tag) => tag.trim()).filter(Boolean))];
@@ -15,8 +15,7 @@ export function mediaDate(row, post) {
   return "";
 }
 export function isPendingMedia(row) {
-  return row.table === "photos" ? isUnclassifiedType(row.type)
-    : !row.hair_color && !(row.tags || []).some((tag) => !["DM", "모먼트", "포스트"].includes(tag));
+  return isUnclassifiedType(row.type);
 }
 export function normalizeManagedMedia(row, table, post) {
   const media = withVideoSourceTags(row, post);
@@ -24,10 +23,11 @@ export function normalizeManagedMedia(row, table, post) {
     tagsText: media.tags.join(", "), searchTagsText: (row.search_tags || []).join(", ") };
 }
 export function managedMediaValues(row) {
-  const values = { hair_color: row.hair_color || null, tags: withVideoSourceTags({ ...row, tags: splitMediaTags(row.tagsText) }).tags,
+  const values = { type: isUnclassifiedType(row.type) ? UNCLASSIFIED_TYPE : row.type, hair_color: row.hair_color || null, tags: withVideoSourceTags({ ...row, tags: splitMediaTags(row.tagsText) }).tags,
     search_tags: splitMediaTags(row.searchTagsText) };
-  if (row.table === "photos") Object.assign(values, { type: isUnclassifiedType(row.type) ? null : row.type,
-    archive_visible: !["스크린샷", "같은사진"].includes(row.type) && row.archive_visible !== false,
+  if (row.table === "photos") Object.assign(values, { 
+    archive_visible: !["스크린샷", "같은사진", "짤"].includes(row.type) && row.archive_visible !== false,
     weverse_url: row.weverse_url || null, crop_position: row.crop_position || "50% 50%" });
+  if (row.table === "videos" && "overlay_text" in row) values.overlay_text = (row.overlay_text || "").trim();
   return values;
 }

@@ -32,6 +32,13 @@
   cursor: pointer;
   padding: 6px;
 }
+.dm-header button:disabled {
+  opacity: 1;
+  color: inherit;
+}
+.dm-header > button,.dm-header > a {
+  flex-shrink: 0;
+}
 .dm-header input,.dm-header select {
   max-width: 145px;
   font: inherit;
@@ -57,6 +64,14 @@
   overflow-y: auto;
   padding: 16px;
   overscroll-behavior: contain;
+}
+.dm-timeline-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.dm-timeline-empty .dm-empty {
+  margin: 0;
 }
 .dm-day {
   text-align: center;

@@ -1,3 +1,4 @@
+import "./styles/ArchiveFilters.css";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
@@ -193,18 +194,19 @@ function Guestbook({ isAdmin = false }) {
       searchPlaceholder="방명록을 검색해보세요"
     >
       <div className="guestbook-page">
+        <div className="guestbook-toolbar"><strong>방명록 <span>{filteredEntries.length}개</span></strong><div className="search-box"><span aria-hidden="true">⌕</span><input type="search" aria-label="방명록 검색" placeholder="검색어를 입력하세요" value={search} onChange={(event) => setSearch(event.target.value)} /></div></div>
         <form className="guestbook-write" onSubmit={createEntry} autoComplete="off">
           <div className="guestbook-profile-choice">
             <button type="button" className="guestbook-profile-button" onClick={openProfilePicker}>
               {selectedProfile ? (
                 <img src={selectedProfile.thumbnail_url || selectedProfile.image_url} alt="선택한 프로필" />
               ) : (
-                <span>PROFILE</span>
+                <span>사진 선택</span>
               )}
             </button>
             <div>
               <button type="button" className="guestbook-profile-select" onClick={openProfilePicker}>
-                아카이브에서 프로필 사진 선택
+                프로필 선택
               </button>
               {selectedProfile && (
                 <button type="button" className="guestbook-profile-remove" onClick={() => setSelectedProfile(null)}>

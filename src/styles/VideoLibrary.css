@@ -475,3 +475,23 @@
     font-size: 12px;
   }
 }
+
+.video-content-summary, .video-content-participants { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
+.youtube-form textarea { width: 100%; min-height: 90px; box-sizing: border-box; padding: 10px; border: 1px solid #d8d2c8; border-radius: 6px; resize: vertical; }
+
+.live-post-back { border: 0; background: transparent; padding: 0; margin: 0 0 16px; color: #777; cursor: pointer; font-size: 13px; }
+.live-post-body { padding: clamp(16px, 4vw, 36px); border: 1px solid #d8d8d8; border-radius: 8px; background: #fff; }
+.live-post-heading { display: flex; flex-direction: column; gap: 10px; padding-bottom: 22px; margin-bottom: 28px; border-bottom: 1px dashed #ddd; }
+.live-post-heading h2 { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
+.live-post-heading time { align-self: flex-end; font-size: 13px; color: #999; }
+.live-post-player { width: 100%; height: clamp(280px, 52dvh, 600px); border-radius: 10px; overflow: hidden; background: #000; }
+.live-post-player iframe { display: block; width: 100%; height: 100%; border: 0; }
+.live-post-source { display: inline-block; margin: 12px 0 20px; color: #888; font-size: 12px; }
+.live-post-summary { white-space: pre-wrap; overflow-wrap: anywhere; margin: 20px 0; font-size: 16px; line-height: 1.8; }
+.live-post-actions { justify-content: flex-end; margin-top: 24px; }
+
+.live-post-play { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border: 0; padding: 0; background: #000; color: #fff; cursor: pointer; }
+.live-post-play img { width: 100%; height: 100%; object-fit: contain; }
+.live-post-play span { position: absolute; display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 50%; background: #0008; }
+
+.youtube-add-content { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }

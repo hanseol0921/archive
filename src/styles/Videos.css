@@ -447,3 +447,6 @@
     max-height: 50dvh;
   }
 }
+
+.video-overlay-caption p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.video-detail-editor textarea { width: 100%; box-sizing: border-box; min-height: 80px; padding: 8px; border: 1px solid #d8d2c8; border-radius: 6px; resize: vertical; }

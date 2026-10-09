@@ -1,6 +1,7 @@
+import { ROOT_VIDEO_FOLDERS } from "./videoFolderFixtures.js";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ROOT_VIDEO_FOLDERS, moveVideoFolder, folderDescendants } from "../src/youtubeContent.js";
+import { moveVideoFolder, folderDescendants } from "../src/youtubeContent.js";
 const folders = [...ROOT_VIDEO_FOLDERS, { id: "a", name: "A", parentId: "youtube", videoIds: ["1"] }, { id: "b", name: "B", parentId: "youtube" }, { id: "child", name: "child", parentId: "a" }];
 test("moving a folder preserves child folders and video assignments", () => {
   const next = moveVideoFolder(folders, "a", "b");

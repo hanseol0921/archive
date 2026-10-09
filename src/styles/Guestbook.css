@@ -4,14 +4,14 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  color: #625e57;
+  color: #596561;
 }
 .guestbook-write {
   flex: 0 0 auto;
   padding: 14px;
-  border: 1px solid #ded9d0;
+  border: 1px solid #dce4e1;
   border-radius: 9px;
-  background: #faf9f6;
+  background: #f6f6f6;
 }
 .guestbook-write-fields {
   display: grid;
@@ -29,10 +29,10 @@
   height: 45px;
   padding: 0;
   overflow: hidden;
-  border: 1px solid #d7d1c7;
+  border: 1px solid #d9e2e0;
   border-radius: 50%;
-  background: #eeeae0;
-  color: #aaa398;
+  background: #f6f6f6;
+  color: #8a9691;
   font-size: 12px;
   cursor: pointer;
 }
@@ -52,13 +52,13 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #777168;
+  color: #36877f;
   font-size: 12px;
-  text-decoration: underline;
+  text-decoration: none;
   cursor: pointer;
 }
 .guestbook-profile-remove {
-  color: #aaa398;
+  color: #8a9691;
   font-size: 12px;
 }
 .guestbook-write input,
@@ -67,10 +67,10 @@
 .guestbook-edit-form textarea,
 .guestbook-delete-form input {
   width: 100%;
-  border: 1px solid #d7d1c7;
+  border: 1px solid #d9e2e0;
   border-radius: 5px;
   background: #fff;
-  color: #55514a;
+  color: #4b5553;
   font: inherit;
   outline: none;
 }
@@ -84,7 +84,7 @@
   margin-top: 7px;
   padding: 9px;
   resize: vertical;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 .guestbook-write input:focus,
@@ -92,7 +92,7 @@
 .guestbook-edit-form input:focus,
 .guestbook-edit-form textarea:focus,
 .guestbook-delete-form input:focus {
-  border-color: #7fc7da;
+  border-color: #70b4a7;
   box-shadow: 0 0 0 2px rgba(99, 198, 223, .13);
 }
 .guestbook-secret-input {
@@ -107,7 +107,7 @@
   margin-top: 7px;
 }
 .guestbook-write-footer span {
-  color: #aaa398;
+  color: #8a9691;
   font-size: 12px;
 }
 .guestbook-write-footer button,
@@ -115,28 +115,28 @@
 .guestbook-delete-form button {
   min-height: 28px;
   padding: 0 11px;
-  border: 1px solid #c9c2b7;
+  border: 1px solid #cddbd6;
   border-radius: 4px;
   background: #fff;
-  color: #625e57;
+  color: #596561;
   font-size: 12px;
   cursor: pointer;
 }
 .guestbook-write-footer button {
-  border-color: #58b7d0;
-  background: #63c6df;
+  border-color: #36877f;
+  background: #36877f;
   color: #fff;
   font-weight: 700;
 }
-button:disabled {
+.guestbook-page button:disabled {
   cursor: default;
   opacity: .55;
 }
 .guestbook-message {
   flex: 0 0 auto;
   padding: 7px 9px;
-  border: 1px solid #e2ddd4;
-  background: #fffdf8;
+  border: 1px solid #d9e2e0;
+  background: #f6f6f6;
   font-size: 12px;
 }
 .guestbook-list {
@@ -149,7 +149,7 @@ button:disabled {
   position: relative;
   margin-bottom: 9px;
   padding: 13px 14px 12px 92px;
-  border: 1px solid #ded9d0;
+  border: 1px solid #dce4e1;
   border-radius: 8px;
   background: #fff;
 }
@@ -157,7 +157,7 @@ button:disabled {
   position: absolute;
   top: 14px;
   left: 11px;
-  color: #aaa398;
+  color: #8a9691;
   font-size: 12px;
 }
 .guestbook-entry-profile {
@@ -166,16 +166,16 @@ button:disabled {
   left: 13px;
   width: 62px;
   height: 62px;
-  border: 1px solid #ded9d0;
+  border: 1px solid #dce4e1;
   border-radius: 5px;
   object-fit: cover;
-  background: #eeeae0;
+  background: #f6f6f6;
 }
 .guestbook-entry-profile-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #aaa398;
+  color: #8a9691;
   font-size: 12px;
 }
 .guestbook-entry header {
@@ -183,23 +183,23 @@ button:disabled {
   align-items: baseline;
   gap: 7px;
   padding-bottom: 8px;
-  border-bottom: 1px dashed #ded9d0;
+  border-bottom: 1px dashed #dce4e1;
 }
 .guestbook-entry header strong {
-  color: #55514a;
-  font-size: 13px;
+  color: #4b5553;
+  font-size: 14px;
 }
 .guestbook-entry header time,
 .guestbook-entry header small {
-  color: #aaa398;
+  color: #8a9691;
   font-size: 12px;
   font-weight: normal;
 }
 .guestbook-entry p {
   min-height: 34px;
   margin: 11px 0 7px;
-  color: #625e57;
-  font-size: 13px;
+  color: #596561;
+  font-size: 14px;
   line-height: 1.75;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -214,7 +214,7 @@ button:disabled {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #999288;
+  color: #788681;
   font-size: 12px;
   text-decoration: underline;
   cursor: pointer;
@@ -228,7 +228,7 @@ button:disabled {
   min-height: 72px;
   padding: 8px;
   resize: vertical;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 .guestbook-edit-form input,
@@ -264,11 +264,11 @@ button:disabled {
   position: relative;
   width: min(330px, 90vw);
   padding: 20px;
-  border: 1px solid #c9c2b7;
+  border: 1px solid #cddbd6;
   border-radius: 9px;
   background: #fff;
   box-shadow: 0 14px 45px rgba(0, 0, 0, .22);
-  color: #625e57;
+  color: #596561;
 }
 .guestbook-delete-dialog strong {
   display: block;
@@ -283,10 +283,10 @@ button:disabled {
   width: 100%;
   height: 34px;
   padding: 0 9px;
-  border: 1px solid #d7d1c7;
+  border: 1px solid #d9e2e0;
   border-radius: 5px;
   outline: none;
-  font-size: 13px;
+  font-size: 14px;
 }
 .guestbook-delete-dialog > div {
   display: flex;
@@ -297,10 +297,10 @@ button:disabled {
 .guestbook-delete-dialog button {
   min-height: 29px;
   padding: 0 11px;
-  border: 1px solid #c9c2b7;
+  border: 1px solid #cddbd6;
   border-radius: 4px;
   background: #fff;
-  color: #625e57;
+  color: #596561;
   font-size: 12px;
   cursor: pointer;
 }
@@ -318,7 +318,7 @@ button:disabled {
 }
 .guestbook-empty {
   padding: 70px 0;
-  color: #aaa398;
+  color: #8a9691;
   font-size: 12px;
   text-align: center;
 }
@@ -338,22 +338,23 @@ button:disabled {
   display: flex;
   flex-direction: column;
   padding: 16px;
-  border: 1px solid #c9c2b7;
+  border: 1px solid #cddbd6;
   border-radius: 10px;
   background: #fff;
   box-shadow: 0 14px 45px rgba(0, 0, 0, .22);
 }
 .guestbook-picker-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #625e57;
+  color: #596561;
   font-size: 14px;
 }
 .guestbook-picker-header button {
   border: 0;
   background: transparent;
-  color: #777168;
+  color: #36877f;
   font-size: 24px;
   cursor: pointer;
 }
@@ -363,7 +364,7 @@ button:disabled {
   height: 34px;
   margin: 10px 0;
   padding: 0 10px;
-  border: 1px solid #d7d1c7;
+  border: 1px solid #d9e2e0;
   border-radius: 5px;
   outline: none;
   font-size: 12px;
@@ -373,30 +374,48 @@ button:disabled {
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: max-content;
   align-content: start;
-  gap: 3px;
+  gap: 6px;
   overflow-y: auto;
 }
 .guestbook-picker-grid button {
-  aspect-ratio: 3 / 4;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 1;
+  box-sizing: border-box;
   padding: 0;
   overflow: hidden;
   border: 2px solid transparent;
-  background: #eeeae0;
+  border-radius: 5px;
+  background: #f6f6f6;
   cursor: pointer;
 }
 .guestbook-picker-grid button.selected {
-  border-color: #11a7d1;
+  border-color: #36877f;
 }
 .guestbook-picker-grid img {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+.guestbook-picker-grid button:hover {
+  border-color: #a1cfc3;
+}
+.guestbook-picker-grid button:focus-visible {
+  outline: 2px solid #36877f;
+  outline-offset: -2px;
+}
 .guestbook-picker-empty {
   grid-column: 1 / -1;
   padding: 70px 0;
-  color: #aaa398;
+  color: #8a9691;
   font-size: 12px;
   text-align: center;
 }
@@ -438,3 +457,30 @@ button:disabled {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+.guestbook-page { flex: 1 1 0; height: auto; text-align: left; gap: 16px; }
+.guestbook-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 0 0 auto; }
+.guestbook-toolbar > strong { font-size: 16px; white-space: nowrap; }
+.guestbook-toolbar > strong span { margin-left: 6px; color: #8a9691; font-size: 12px; }
+.guestbook-toolbar .search-box { margin-left: auto; }
+.guestbook-write { display: grid; grid-template-columns: 64px minmax(0,1fr); column-gap: 14px; row-gap: 8px; padding: 16px; border: 0; border-radius: 8px; }
+.guestbook-profile-choice { grid-column: 1; grid-row: 1 / span 3; flex-direction: column; align-items: center; gap: 6px; margin: 0; }
+.guestbook-profile-choice > div { align-items: center; text-align: center; }
+.guestbook-profile-button { width: 56px; height: 56px; border-radius: 8px; }
+.guestbook-write-fields { grid-column: 2; gap: 8px; }
+.guestbook-write textarea { grid-column: 2; margin: 0; height: 72px; min-height: 72px; }
+.guestbook-write-footer { grid-column: 2; margin: 0; }
+.guestbook-write-footer button { height: 30px; padding: 0 14px; border-radius: 5px; }
+.guestbook-write :is(input,textarea), .guestbook-edit-form :is(input,textarea), .guestbook-delete-form input { box-sizing: border-box; }
+.guestbook-entry { display: grid; grid-template-columns: 60px minmax(0,1fr); column-gap: 16px; row-gap: 10px; padding: 16px 0; margin: 0; border: 0; border-top: 1px solid #e2e8e5; border-radius: 0; }
+.guestbook-entry-number { position: static; grid-column: 1; grid-row: 1; align-self: center; }
+.guestbook-entry-profile { position: static; grid-column: 1; grid-row: 2 / span 2; width: 60px; height: 60px; box-sizing: border-box; border-radius: 8px; }
+.guestbook-entry header { grid-column: 2; grid-row: 1; flex-wrap: wrap; padding: 0; border: 0; gap: 6px; }
+.guestbook-entry header strong { font-size: 14px; }
+.guestbook-entry header time { margin-left: auto; font-size: 12px; }
+.guestbook-entry :is(p,.guestbook-edit-form) { grid-column: 2; grid-row: 2; margin: 0; }
+.guestbook-entry .guestbook-actions { grid-column: 2; grid-row: 3; }
+.guestbook-actions button { padding: 3px 6px; min-height: 24px; border-radius: 4px; }
+.guestbook-actions button:hover { color: #36877f; background: #f6f6f6; }
+.guestbook-page button:focus-visible { outline: 2px solid #36877f; outline-offset: 2px; }
+@media(max-width:600px) { .guestbook-toolbar { flex-wrap: wrap; } .guestbook-toolbar .search-box { width: 100%; } .guestbook-write { padding: 12px; grid-template-columns: 56px minmax(0,1fr); gap: 8px; } .guestbook-entry { grid-template-columns: 48px minmax(0,1fr); column-gap: 10px; } .guestbook-entry-profile { width: 48px; height: 48px; } .guestbook-entry header time { margin-left: 0; flex-basis: 100%; } }

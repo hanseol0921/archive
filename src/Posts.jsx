@@ -1,3 +1,4 @@
+import { MEDIA_TYPES, VIDEO_TYPES, UNCLASSIFIED_TYPE } from "./mediaClassification";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
@@ -433,6 +434,7 @@ function moveEditMedia(
         ? {
             ...item,
             [field]: value,
+            ...(mediaKind === "photo" && field === "type" && ["스크린샷", "같은사진", "짤"].includes(value) ? { archive_visible: false } : {}),
           }
         : item
     )
@@ -835,14 +837,14 @@ function handleEditCropEnd(
           .from("photos")
           .update({
             type:
-              item.type || null,
+              item.type || UNCLASSIFIED_TYPE,
 
             hair_color:
               item.hair_color ||
               null,
 
             archive_visible:
-              item.archive_visible !== false,
+              !["스크린샷", "같은사진", "짤"].includes(item.type) && item.archive_visible !== false,
 
             tags:
               item.tags || [],
@@ -880,7 +882,7 @@ function handleEditCropEnd(
   } = await supabase
     .from("videos")
     .update({
-      type: item.type || null,
+      type: item.type || UNCLASSIFIED_TYPE,
 
       crop_position:
         `${item.cropX ?? 50}% ${item.cropY ?? 50}%`,
@@ -1857,21 +1859,6 @@ function handleEditCropEnd(
                 <label>게시글 해시태그</label>
                 <TagPicker value={editPostTags} onChange={setEditPostTags} />
 
-                <label>
-                  위버스 링크
-                </label>
-
-                <input
-                  type="url"
-                  value={
-                    editPostWeverseUrl
-                  }
-                  onChange={(e) =>
-                    setEditPostWeverseUrl(
-                      e.target.value
-                    )
-                  }
-                />
 
                 <div className="diary-post-editor">
                   <label className="diary-post-toggle">
@@ -2058,33 +2045,15 @@ function handleEditCropEnd(
               )
             }
           >
-            <option value="">
-              선택
-            </option>
-
-            <option value="셀카">
-              셀카
-            </option>
-
-            <option value="남찍사">
-              남찍사
-            </option>
-
-            <option value="거울셀카">
-              거울셀카
-            </option>
-
-            <option value="그외">
-              그외
-            </option>
+            <option value="">선택 안됨</option>{MEDIA_TYPES.map((type) => <option key={type}>{type}</option>)}
           </select>
 
 
           <label className="archive-visible-toggle">
             <input
               type="checkbox"
-              checked={item.archive_visible !== false}
-              disabled={item.deletePending}
+              checked={!["스크린샷", "같은사진", "짤"].includes(item.type) && item.archive_visible !== false}
+              disabled={item.deletePending || ["스크린샷", "같은사진", "짤"].includes(item.type)}
               onChange={(e) =>
                 updateEditMedia(
                   item.id,
@@ -2180,29 +2149,6 @@ function handleEditCropEnd(
             placeholder="검색용 숨김 태그"
           />
 
-
-          <label>
-            사진 위버스 링크
-          </label>
-
-          <input
-            type="url"
-            value={
-              item.weverse_url || ""
-            }
-            disabled={
-              item.deletePending
-            }
-            onChange={(e) =>
-              updateEditMedia(
-                item.id,
-                item.mediaKind,
-                "weverse_url",
-                e.target.value
-              )
-            }
-          />
-
         </>
       )}
 
@@ -2224,11 +2170,7 @@ function handleEditCropEnd(
               )
             }
           >
-            <option value="">선택</option>
-            <option value="셀카">셀카</option>
-            <option value="남찍사">남찍사</option>
-            <option value="거울셀카">거울셀카</option>
-            <option value="그외">그외</option>
+            <option value="">선택 안됨</option>{VIDEO_TYPES.map((type) => <option key={type}>{type}</option>)}
           </select>
         </>
       )}

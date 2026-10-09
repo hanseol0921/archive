@@ -203,8 +203,6 @@ function Archive({ isAdmin = false }) {
       }
 
       allPhotos.push(...(data || []));
-      // Render each page while the remaining metadata loads.
-      setPhotos([...allPhotos]);
 
       if (!data || data.length < pageSize) {
         break;
@@ -680,7 +678,7 @@ async function getPhotoPost(photo) {
           tags: tagArray,
           search_tags: searchTagArray,
           weverse_url: editWeverseUrl,
-          archive_visible: ["스크린샷", "같은사진"].includes(editType) ? false : editArchiveVisible,
+          archive_visible: ["스크린샷", "같은사진", "짤"].includes(editType) ? false : editArchiveVisible,
 
           // ★ 크롭 위치 저장
           crop_position: cropPosition,
@@ -1781,7 +1779,7 @@ const hairColorAliases = {
 
                   <select
                     value={editType}
-                    onChange={(e) => { setEditType(e.target.value); if (["스크린샷", "같은사진"].includes(e.target.value)) setEditArchiveVisible(false); }}
+                    onChange={(e) => { setEditType(e.target.value); if (["스크린샷", "같은사진", "짤"].includes(e.target.value)) setEditArchiveVisible(false); }}
                   >
                     <option value="">선택 안됨</option>
                     <option value="셀카">셀카</option>
@@ -1791,14 +1789,15 @@ const hairColorAliases = {
                     <option value="거울셀카">거울셀카</option>
 
 
-                    <option value="리우뷰">리우뷰</option>
+                    <option value="짤">짤</option><option value="리우뷰">리우뷰</option>
                     <option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
                   </select>
 
                   <label className="archive-visible-toggle">
                     <input
                       type="checkbox"
-                      checked={editArchiveVisible}
+                      checked={!["스크린샷", "같은사진", "짤"].includes(editType) && editArchiveVisible}
+                      disabled={["스크린샷", "같은사진", "짤"].includes(editType)}
                       onChange={(e) => setEditArchiveVisible(e.target.checked)}
                     />
                     아카이브 표시
@@ -1838,13 +1837,6 @@ const hairColorAliases = {
 
                   {/* 위버스 */}
 
-                  <label>위버스 링크</label>
-
-                  <input
-                    type="url"
-                    value={editWeverseUrl}
-                    onChange={(e) => setEditWeverseUrl(e.target.value)}
-                  />
                 </div>
               )}
             </div>

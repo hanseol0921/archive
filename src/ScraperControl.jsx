@@ -1,5 +1,7 @@
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./styles/ScraperControl.css";
+import "./styles/AdminTools.css";
 
 const LOCAL_SERVER = "http://127.0.0.1:8765";
 
@@ -65,11 +67,10 @@ function ScraperControl() {
   return (
     <main className="scraper-control-page">
       <header className="scraper-control-header">
-        <button type="button" onClick={() => { window.location.href = "/admin"; }}>← 관리자 홈</button>
+        <button type="button" className="admin-tools-back" aria-label="설정으로 돌아가기" title="설정으로 돌아가기" onClick={() => { window.location.href = "/admin/settings"; }}><ArrowLeft size={18} aria-hidden="true" /></button>
         <div>
-          <small>LOCAL SCRAPER</small>
           <h1>위버스 게시글 가져오기</h1>
-          <p>기존 Python 스크래퍼를 그대로 실행하고 진행 로그를 확인합니다.</p>
+          <p>게시글을 가져오고 진행 상황을 확인합니다.</p>
         </div>
       </header>
 

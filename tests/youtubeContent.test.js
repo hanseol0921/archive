@@ -1,6 +1,7 @@
+import { ROOT_VIDEO_FOLDERS } from "./videoFolderFixtures.js";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { youtubeVideoId, parseYoutubeContents, parseVideoFolders, ROOT_VIDEO_FOLDERS, folderDescendants, folderSource, weverseFolderMatches } from "../src/youtubeContent.js";
+import { youtubeVideoId, parseYoutubeContents, parseVideoFolders, folderDescendants, folderSource, weverseFolderMatches } from "../src/youtubeContent.js";
 
 test("Weverse posts folder automatically includes ordinary videos and excludes DM and Moments", () => {
   const folders = parseVideoFolders(ROOT_VIDEO_FOLDERS);
@@ -9,7 +10,7 @@ test("Weverse posts folder automatically includes ordinary videos and excludes D
   assert.equal(weverseFolderMatches(folders, "weverse-posts", { id: 3, dm_asset_id: "dm-1" }), false);
   assert.equal(weverseFolderMatches(folders, "weverse-posts", { id: 4 }, { weverse_url: "https://weverse.io/moment/4" }), false);
   const oldFolders = ROOT_VIDEO_FOLDERS.filter((folder) => folder.id !== "weverse-posts");
-  assert.ok(parseVideoFolders(oldFolders).some((folder) => folder.autoTag === "포스트"));
+  assert.equal(parseVideoFolders(oldFolders).some((folder) => folder.autoTag === "포스트"), false);
   const renamed = folders.map((folder) => folder.id === "weverse-posts" ? { ...folder, name: "게시 영상", videoIds: ["2"] } : folder);
   assert.equal(weverseFolderMatches(renamed, "weverse-posts", { id: 1 }), true);
   assert.equal(weverseFolderMatches(renamed, "weverse-posts", { id: 2, tags: ["모먼트"] }), false);

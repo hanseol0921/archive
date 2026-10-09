@@ -1,8 +1,8 @@
 .scraper-control-page {
   min-height: 100vh;
   padding: 48px 20px 80px;
-  background: #f5f2eb;
-  color: #403c36;
+  background: #f6f6f6;
+  color: #4b5553;
 }
 .scraper-control-header, .scraper-control-card {
   width: min(920px, 100%);
@@ -16,29 +16,29 @@
 }
 .scraper-control-header button {
   padding: 9px 14px;
-  border: 1px solid #bdb7ad;
+  border: 1px solid #ccd8d5;
   border-radius: 8px;
   background: #fff;
   cursor: pointer;
 }
 .scraper-control-header small {
   letter-spacing: .22em;
-  color: #9a8e7d;
+  color: #7b8582;
 }
 .scraper-control-header h1 {
   margin: 5px 0 6px;
-  font-size: 32px;
+  font-size: 20px;
 }
 .scraper-control-header p {
   margin: 0;
-  color: #777067;
+  color: #7b8582;
 }
 .scraper-control-card {
   padding: 28px;
-  border: 1px solid #d8d2c8;
+  border: 1px solid #d9e2e0;
   border-radius: 16px;
   background: rgba(255,255,255,.94);
-  box-shadow: 0 12px 30px rgba(83,72,54,.09);
+  box-shadow: 0 6px 20px rgba(40,70,60,.05);
 }
 .scraper-control-status {
   display: flex;
@@ -81,16 +81,16 @@
 .scraper-control-actions button {
   min-height: 42px;
   padding: 0 17px;
-  border: 1px solid #4e4942;
+  border: 1px solid #36877f;
   border-radius: 8px;
-  background: #4e4942;
+  background: #36877f;
   color: #fff;
   font-weight: 700;
   cursor: pointer;
 }
 .scraper-control-actions button.continue {
-  background: #28aaca;
-  border-color: #28aaca;
+  background: #36877f;
+  border-color: #36877f;
 }
 .scraper-control-actions button.stop {
   color: #b84c49;
@@ -104,15 +104,15 @@
 .scraper-control-guide {
   margin: 22px 0;
   padding-left: 22px;
-  color: #6c655c;
+  color: #66716e;
   line-height: 1.8;
 }
 .scraper-control-message {
   margin-bottom: 12px;
   padding: 10px 13px;
   border-radius: 7px;
-  background: #eef8fb;
-  color: #267b91;
+  background: #f6f6f6;
+  color: #36877f;
 }
 .scraper-control-log {
   height: 390px;
@@ -121,10 +121,10 @@
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  border: 1px solid #262421;
+  border: 1px solid #d9e2e0;
   border-radius: 10px;
-  background: #201f1d;
-  color: #e8e4dc;
+  background: #f6f6f6;
+  color: #4b5553;
   font: 14px/1.65 Consolas, monospace;
 }
 @media (max-width: 600px) {
@@ -138,7 +138,7 @@
     margin-bottom: 18px;
   }
   .scraper-control-header h1 {
-    font-size: 26px;
+    font-size: 20px;
   }
   .scraper-control-card {
     padding: 18px;

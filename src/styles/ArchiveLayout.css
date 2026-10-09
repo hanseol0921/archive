@@ -113,8 +113,8 @@
   font-weight: bold;
 }
 .profile-text {
-  margin: 24px 16px 0;
-  font-size: 16px;
+  margin: 48px 16px 20px;
+  font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
   color: #8c867b;

@@ -1,3 +1,5 @@
+import useDragSelection from "./useDragSelection";
+import { VIDEO_TYPES, UNCLASSIFIED_TYPE } from "./mediaClassification";
 import { useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import "./styles/Admin.css";
@@ -54,7 +56,7 @@ const [mediaOrder, setMediaOrder] = useState([]);
   const [bulkHairColor, setBulkHairColor] = useState("");
   const [bulkTags, setBulkTags] = useState("");
   const [bulkSearchTags, setBulkSearchTags] = useState("");
-  const [bulkWeverseUrl, setBulkWeverseUrl] = useState("");
+  const bulkWeverseUrl = "";
 
   const [bulkTarget, setBulkTarget] = useState("all");
 
@@ -63,6 +65,7 @@ const [mediaOrder, setMediaOrder] = useState([]);
   // =========================
 
   const [uploading, setUploading] = useState(false);
+  const { overlay: selectionOverlay, ...selectionHandlers } = useDragSelection({ selected: photos.filter((photo) => photo.selected).map((photo) => String(photo.id)), onChange: (ids) => setPhotos((current) => current.map((photo) => ({ ...photo, selected: ids.includes(String(photo.id)) }))), disabled: uploading });
   const [message, setMessage] = useState("");
 
   // =========================
@@ -741,8 +744,8 @@ for (
           photo.date,
 
         type:
-          photo.type,
-        archive_visible: !["스크린샷", "같은사진"].includes(photo.type),
+          photo.type || UNCLASSIFIED_TYPE,
+        archive_visible: !["스크린샷", "같은사진", "짤"].includes(photo.type),
 
         hair_color:
           photo.hairColor,
@@ -816,6 +819,7 @@ for (
     } = await supabase
       .from("videos")
       .insert({
+        type: video.type || UNCLASSIFIED_TYPE,
         post_id:
           createdPostId,
 
@@ -1216,7 +1220,7 @@ for (
                   거울셀카
                 </option>
 
-                <option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
+                <option value="짤">짤</option><option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
               </select>
 
               <input
@@ -1234,16 +1238,6 @@ for (
 
               <small>검색용 태그는 태그 관리에서 설정</small>
 
-              <input
-                type="url"
-                placeholder="위버스 링크"
-                value={bulkWeverseUrl}
-                onChange={(e) =>
-                  setBulkWeverseUrl(
-                    e.target.value
-                  )
-                }
-              />
 
             </div>
 
@@ -1299,7 +1293,8 @@ for (
       </div>
     </div>
 
-    <div className="photo-settings-grid">
+    {selectionOverlay}
+            <div {...selectionHandlers} className="photo-settings-grid">
 
       {videos.map((video) => (
         <div
@@ -1350,6 +1345,7 @@ for (
 
             <div className="mini-field">
               <label>태그</label>
+              <select aria-label="동영상 유형" value={video.type || ""} onChange={(event) => updateVideo(video.id, "type", event.target.value)}><option value="">선택 안됨</option>{VIDEO_TYPES.map((type) => <option key={type}>{type}</option>)}</select>
               <TagPicker value={video.tags} onChange={(value) => updateVideo(video.id, "tags", value)} />
             </div>
 
@@ -1407,6 +1403,7 @@ for (
                         : ""
                     }`}
                     key={photo.id}
+                    data-drag-select-id={String(photo.id)}
                     onMouseDown={(e) =>
                       startPhotoSelection(
                         e,
@@ -1595,7 +1592,7 @@ for (
                             거울셀카
                           </option>
 
-                          <option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
+                          <option value="짤">짤</option><option value="리우뷰">리우뷰</option><option value="스크린샷">스크린샷</option><option value="같은사진">같은사진</option>
                         </select>
 
                       </div>
@@ -1635,28 +1632,6 @@ for (
 
                       <div className="mini-field"><small>검색용 태그는 태그 관리에서 설정</small></div>
 
-                      <div className="mini-field">
-
-                        <label>
-                          위버스 링크
-                        </label>
-
-                        <input
-                          type="url"
-                          placeholder="https://..."
-                          value={
-                            photo.weverseUrl
-                          }
-                          onChange={(e) =>
-                            updatePhoto(
-                              photo.id,
-                              "weverseUrl",
-                              e.target.value
-                            )
-                          }
-                        />
-
-                      </div>
 
                     </div>
 
