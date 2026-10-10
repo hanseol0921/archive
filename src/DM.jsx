@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Gift, X, UserRound, RotateCcw, Upload, ChevronsUp, Camera } from 'lucide-react';
+import { Gift, X, UserRound, RotateCcw, Upload, ChevronsUp, Camera, Search, Images } from 'lucide-react';
 import ArchiveLayout from './ArchiveLayout';
 import { supabase } from './supabaseClient';
 import './styles/DM.css';
 import { messageProfile, profileEvidence, effectiveProfileHistory } from './dmProfiles';
-import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing } from './dmChat';
+import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing, collectDMMedia } from './dmChat';
 import DMProfileHistory from './DMProfileHistory';
 import { profileCrop, cropStyle } from './profileCrop';
 import { sharedProfileAssets } from './artistProfileAssets';
@@ -47,6 +47,10 @@ export default function DM({ isAdmin = false }) {
   const [profiles, setProfiles] = useState(() => dmHeaderCache.get(isAdmin)?.profiles || []);
   const [messages, setMessages] = useState([]);
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [view, setView] = useState('chat');
+  const [mediaType, setMediaType] = useState('all');
+  const [readyView, setReadyView] = useState('');
   const [date, setDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -105,6 +109,11 @@ export default function DM({ isAdmin = false }) {
     const [result, profileResults] = await Promise.all([collectDMPages(async c => {
     let query = supabase.from('dm_messages').select('*').eq('room_id', roomId)
       .order('sent_at', { ascending: false }).order('id', { ascending: false }).limit(100);
+    if (view === 'media') {
+      if (mediaType === 'all') query = query.or('blocks.cs.[{"type":"photo"}],blocks.cs.[{"type":"video"}],blocks.cs.[{"type":"audio"}]');
+      else query = query.contains('blocks', [{ type: mediaType }]);
+      query = query.eq('deleted', false);
+    }
     if (search.trim()) query = query.ilike('text', `%${search.trim().replace(/[\\%_]/g, '\\$&')}%`);
     if (date) {
       const start = new Date(`${date}T00:00:00+09:00`);
@@ -123,6 +132,7 @@ export default function DM({ isAdmin = false }) {
     setProfiles(profileResults[0].data || []);
     setOverrides(profileResults[1].data || []);
     setReadyRoom(roomId);
+    setReadyView(`${roomId}:${view}:${mediaType}`);
     requestPending.current = false; setLoading(false);
     const rows = result.rows;
     cursor.current = result.cursor;
@@ -133,14 +143,14 @@ export default function DM({ isAdmin = false }) {
       return [...combined.values()].sort((a, b) => Date.parse(a.sent_at) - Date.parse(b.sent_at) || a.id.localeCompare(b.id));
     });
     requestAnimationFrame(() => {
-      if (timeline.current) timeline.current.scrollTop = all ? 0 : older
+      if (timeline.current) timeline.current.scrollTop = all || view === 'media' && !older ? 0 : older
         ? previousTop + timeline.current.scrollHeight - previousHeight : timeline.current.scrollHeight;
     });
     } catch (e) {
       if (version !== generation.current) return;
-      requestPending.current = false; setLoading(false); setError(e.message); setReadyRoom(roomId); metadata.current = null;
+      requestPending.current = false; setLoading(false); setError(e.message); setReadyRoom(roomId); setReadyView(`${roomId}:${view}:${mediaType}`); metadata.current = null;
     }
-  }, [roomId, search, date, isAdmin]);
+  }, [roomId, search, date, isAdmin, view, mediaType]);
 
   useEffect(() => {
     const timer = setTimeout(() => { cursor.current = null; load(); }, search.trim() ? 250 : 0);
@@ -167,11 +177,12 @@ export default function DM({ isAdmin = false }) {
     return () => { active = false; };
   }, [roomId, profileOpen]);
 
-  const contentReady = readyRoom === roomId;
+  const contentReady = readyRoom === roomId && (!roomId || readyView === `${roomId}:${view}:${mediaType}`);
   const room = rooms.find(r => r.id === roomId);
   const roomProfiles = profiles.filter(p => p.room_id === roomId);
   const profile = roomProfiles[0];
   const chatRows = displayMessages(messages);
+  const mediaItems = collectDMMedia(messages, mediaType);
   function openHistory(p, message = null) {
     setSelectedProfile(p); setSelectedMessage(message); setProfileOpen(true);
   }
@@ -186,14 +197,22 @@ export default function DM({ isAdmin = false }) {
         <div><strong>{profile?.name || room?.display_name || 'DM'}</strong><span>{profile?.status_emoji || ''}</span></div>
         {rooms.length > 1 && <select aria-label="아티스트" value={roomId} onChange={e => setRoomId(e.target.value)}>{rooms.map(r => <option key={r.id} value={r.id}>{r.artist_name}</option>)}</select>}
         <input aria-label="메시지 날짜" type="date" value={date} onChange={e => setDate(e.target.value)} />
+        <button type="button" title="DM 검색" aria-label="DM 검색" aria-expanded={searchOpen} onClick={() => setSearchOpen(value => !value)}><Search size={18} /></button>
+        <button type="button" title={view === 'chat' ? '미디어 모아보기' : '채팅 보기'} aria-label="미디어 모아보기" aria-pressed={view === 'media'} onClick={() => setView(value => value === 'chat' ? 'media' : 'chat')}><Images size={18} /></button>
         {date && <button title="날짜 초기화" aria-label="날짜 초기화" onClick={() => setDate('')}><X size={16} /></button>}
         <button title="새로고침" aria-label="새로고침" disabled={loading} onClick={() => load()}><RotateCcw size={16} /></button>
         <button title="저장된 첫 메시지로 이동" aria-label="저장된 첫 메시지로 이동" disabled={loading} onClick={() => load(false, true)}><ChevronsUp size={18} /></button>
         {isAdmin && <a href="/admin/dm/import" title="DM 가져오기" aria-label="DM 가져오기"><Upload size={18} /></a>}
       </header>
+      {searchOpen && <div className="dm-search-row"><Search size={16} /><input autoFocus type="search" aria-label="DM 메시지 검색" placeholder="검색어를 입력하세요" value={search} onChange={event => setSearch(event.target.value)} />{search && <button type="button" aria-label="검색 초기화" onClick={() => setSearch('')}><X size={16} /></button>}</div>}
+      {view === 'media' && <nav className="dm-media-tabs" aria-label="DM 미디어 종류">{[['all','전체'],['photo','사진'],['video','동영상'],['audio','녹음본']].map(([value,label]) => <button type="button" key={value} aria-pressed={mediaType === value} onClick={() => setMediaType(value)}>{label}</button>)}</nav>}
       {error && <p className="dm-error" role="alert">{error}</p>}
       <div className={`dm-timeline${!contentReady || !messages.length ? " dm-timeline-empty" : ""}`} ref={timeline} aria-busy={loading}>
-        {!contentReady ? <p className="dm-empty" role="status">불러오는 중</p> : <>
+        {!contentReady ? <p className="dm-empty" role="status">불러오는 중</p> : view === 'media' ? <>
+          {!mediaItems.length && <p className="dm-empty">{loading ? '불러오는 중' : '해당 미디어가 없습니다.'}</p>}
+          <div className="dm-media-grid">{mediaItems.map(item => <article className={item.block.type === 'audio' ? 'dm-media-card dm-media-audio' : 'dm-media-card'} key={item.id}><time dateTime={item.sent_at}>{dateLabel(item.sent_at)} {new Date(item.sent_at).toLocaleTimeString('ko-KR', {timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit'})}</time><MessageBody message={{blocks:[item.block],deleted:false}} /></article>)}</div>
+          {more && <button className="dm-older" disabled={loading} onClick={() => load(true)}>더 보기</button>}
+        </> : <>
         {more && <button className="dm-older" disabled={loading} onClick={() => load(true)}>이전 메시지</button>}
         {!messages.length && <p className="dm-empty">{loading ? '불러오는 중' : '저장된 메시지가 없습니다.'}</p>}
         {chatRows.map((m, i) => {

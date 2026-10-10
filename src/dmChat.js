@@ -1,3 +1,10 @@
+export function collectDMMedia(messages, type = 'all') {
+  return [...messages].sort((a, b) => Date.parse(b.sent_at) - Date.parse(a.sent_at) || b.id.localeCompare(a.id))
+    .flatMap(message => message.deleted ? [] : (message.blocks || []).flatMap((block, index) =>
+      ['photo', 'video', 'audio'].includes(block.type) && block.url && (type === 'all' || block.type === type)
+        ? [{ id: `${message.id}:${index}`, sent_at: message.sent_at, block }] : []));
+}
+
 export function displayMessages(messages) {
   return messages.flatMap(message => {
     const profile = message.blocks.filter(b => b.type === 'profile');

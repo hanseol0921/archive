@@ -12,10 +12,12 @@ import { GlobalBgmPlayer } from "./ArchiveLayout";
 import Home from "./Home";
 import WeverseComments from './WeverseComments';
 import DM from './DM';
+import useDocumentTitle from './useDocumentTitle';
 
 function App() {
   const visibility = useTabVisibility();
   const [path, setPath] = useState(window.location.pathname);
+  useDocumentTitle(path);
 
   useEffect(() => {
     const handleNavigation = () => setPath(window.location.pathname);

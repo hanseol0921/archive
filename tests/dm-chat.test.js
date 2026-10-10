@@ -1,6 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing } from '../src/dmChat.js';
+import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing, collectDMMedia } from '../src/dmChat.js';
+
+test('media gallery includes older recordings and excludes deleted or missing media', () => {
+  const messages = [
+    { id: 'old', sent_at: '2026-01-01T00:00:00Z', blocks: [{type:'audio',url:'recording.mp3'},{type:'text',text:'hello'}] },
+    { id: 'new', sent_at: '2026-02-01T00:00:00Z', blocks: [{type:'photo',url:'image.jpg'},{type:'audio'},{type:'video',url:'video.mp4'}] },
+    { id: 'deleted', sent_at: '2026-03-01T00:00:00Z', deleted: true, blocks: [{type:'audio',url:'deleted.mp3'}] },
+  ];
+  assert.deepEqual(collectDMMedia(messages).map(item => item.block.url), ['image.jpg','video.mp4','recording.mp3']);
+  assert.deepEqual(collectDMMedia(messages, 'audio').map(item => item.id), ['old:0']);
+  assert.equal(messages[0].id, 'old');
+});
 
 test('body items stay in separate bubbles and original order', () => {
   const rows = displayMessages([{ id:'m',blocks:[

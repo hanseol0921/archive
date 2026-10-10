@@ -18,7 +18,7 @@ const DEFAULT_BGM_PLAYLIST = [
 
 const DEFAULT_SITE_COPY = {
   todayStatus: "",
-  archiveTitle: "링링일기",
+  archiveTitle: "",
   profileMessageTitle: "링링의 한 마디",
   profileMessage: "하이류~~~",
 };
@@ -31,6 +31,7 @@ try {
   cachedProfileImage = sessionStorage.getItem("riwoo_profile_image") || "";
   const savedSiteCopy = sessionStorage.getItem("riwoo_site_copy");
   cachedSiteCopy = savedSiteCopy ? JSON.parse(savedSiteCopy) : null;
+  if (cachedSiteCopy) cachedSiteCopy.archiveTitle = "";
 } catch {
   // 저장소를 사용할 수 없는 브라우저에서도 메모리 캐시는 그대로 사용한다.
 }
@@ -41,8 +42,8 @@ function rememberProfileImage(value) {
 }
 
 function rememberSiteCopy(value) {
-  cachedSiteCopy = value;
-  try { sessionStorage.setItem("riwoo_site_copy", JSON.stringify(value)); } catch { /* noop */ }
+  cachedSiteCopy = { ...value, archiveTitle: "" };
+  try { sessionStorage.setItem("riwoo_site_copy", JSON.stringify({ ...value, archiveTitle: "" })); } catch { /* noop */ }
 }
 
 function getYoutubeVideoId(url) {
@@ -688,15 +689,6 @@ function ArchiveLayout({
   const [siteCopyLoaded, setSiteCopyLoaded] = useState(() => Boolean(cachedSiteCopy));
 
   useEffect(() => {
-    const title = siteCopy.archiveTitle?.trim();
-    if (!title) return;
-    document.title = title;
-    for (const selector of ['meta[name="application-name"]', 'meta[property="og:site_name"]']) {
-      document.querySelector(selector)?.setAttribute("content", title);
-    }
-  }, [siteCopy.archiveTitle]);
-
-  useEffect(() => {
     let cancelled = false;
 
     async function loadSiteCopy() {
@@ -769,6 +761,7 @@ function ArchiveLayout({
       setSiteCopy(nextCopy);
       setSiteCopyDraft(nextCopy);
       setSiteCopyEditorOpen(false);
+      window.dispatchEvent(new CustomEvent("archive:title-changed", { detail: nextCopy.archiveTitle }));
     } catch (error) {
       console.error("사이트 문구 저장 오류:", error);
       alert(`사이트 문구를 저장하지 못했습니다.\n${error.message}`);
