@@ -192,9 +192,9 @@ export default function DM({ isAdmin = false }) {
     <section className="dm-chat">
       <header className="dm-header">
         <button className="dm-profile-button" onClick={() => openHistory(profile)} aria-label="프로필 기록" disabled={!profile}>
-          {profile?.avatar_url ? <img src={profile.avatar_url} alt="프로필" /> : <UserRound size={28} />}
+          {profile?.avatar_url && <img src={profile.avatar_url} alt="프로필" />}
         </button>
-        <div><strong>{profile?.name || room?.display_name || 'DM'}</strong><span>{profile?.status_emoji || ''}</span></div>
+        <div className="dm-header-identity"><strong>{profile?.name || ''}</strong><span>{profile?.status_emoji || ''}</span></div>
         {rooms.length > 1 && <select aria-label="아티스트" value={roomId} onChange={e => setRoomId(e.target.value)}>{rooms.map(r => <option key={r.id} value={r.id}>{r.artist_name}</option>)}</select>}
         <input aria-label="메시지 날짜" type="date" value={date} onChange={e => setDate(e.target.value)} />
         <button type="button" title="DM 검색" aria-label="DM 검색" aria-expanded={searchOpen} onClick={() => setSearchOpen(value => !value)}><Search size={18} /></button>

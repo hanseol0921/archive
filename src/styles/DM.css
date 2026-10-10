@@ -22,6 +22,10 @@
   align-items: center;
   margin-right: auto;
 }
+.dm-header-identity {
+  min-width: 80px;
+  min-height: 24px;
+}
 .dm-header button,.dm-header a,.dm-profile-history button {
   display: inline-flex;
   align-items: center;
