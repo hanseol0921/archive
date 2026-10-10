@@ -1,5 +1,6 @@
 import { MEDIA_TYPES, VIDEO_TYPES, UNCLASSIFIED_TYPE } from "./mediaClassification";
 import { useEffect, useRef, useState } from "react";
+import { ArrowLeft } from 'lucide-react';
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
 import "./styles/App.css";
@@ -1345,11 +1346,12 @@ function handleEditCropEnd(
       <ArchiveLayout
         isAdmin={isAdmin}
         activeTab="posts"
+        onActiveTabClick={closePostModal}
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="게시글 내용을 검색해보세요"
       >
-          <div className="post-content">
+          <div className="post-content" hidden={!!selectedPost}>
 
             {/* =========================
                 게시글 목록
@@ -1590,39 +1592,23 @@ function handleEditCropEnd(
             </div>
 
           </div>
-      </ArchiveLayout>
 
       {/* =========================
-          게시글 상세 모달
+          게시글 상세
       ========================= */}
 
       {selectedPost && (
 
-        <div
-          className="post-modal"
-          onClick={(event) => {
-            if (event.target !== event.currentTarget) return;
-            if (!window.getSelection?.().isCollapsed) return;
-            closePostModal();
-          }}
-        >
-
-          <div
-            className="post-modal-content"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
-          >
-
-            {/* 닫기 */}
-
+        <section className="post-page-detail" aria-label="게시글 상세">
             <button
               type="button"
-              className="post-modal-close"
+              className="post-page-back"
               onClick={closePostModal}
+              disabled={postSaving}
             >
-              ×
+              <ArrowLeft size={16}/> 목록으로
             </button>
+          <article className="post-page-content">
 
             {/* =========================
                 일반 상세 화면
@@ -2250,11 +2236,12 @@ function handleEditCropEnd(
 
             )}
 
-          </div>
+          </article>
 
-        </div>
+        </section>
 
       )}
+      </ArchiveLayout>
 
       <ContentReport target={reportTarget} onClose={() => setReportTarget(null)} />
 

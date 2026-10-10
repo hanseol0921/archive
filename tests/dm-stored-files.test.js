@@ -14,6 +14,11 @@ test('does not reuse foreign hosts or other rooms',()=>{
     {url:`https://media.riwooarchive.com/photos/dm/other/${hash}.jpg`}]}],'r');
   assert.equal(files.size,0);
 });
+test('shared profile files are reused even when they were first imported from Weverse',()=>{
+  const url=`https://media.riwooarchive.com/photos/weverse/${hash}.jpg`;
+  const files=rememberDMFiles([{blocks:[{type:'profile',avatar_url:url+'#dm-crop=50,50,1'}]}],'r');
+  assert.equal(files.get(`${hash}.jpg`),url);
+});
 test('reads all database pages instead of only the first page',async()=>{
   let reads=0;
   const client={from(table){return {select(){return this;},eq(){return this;},order(){return this;},async range(start){

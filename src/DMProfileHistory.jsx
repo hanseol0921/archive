@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X, UserRound, Pencil, Save } from 'lucide-react';
 import { supabase } from './supabaseClient';
-import { uploadToR2 } from './r2Storage';
-import { dmStorageKey } from './dmStorageKey';
+import { uploadArtistProfile } from './artistProfileAssets';
 import { profileCrop, cropStyle, croppedProfileURL } from './profileCrop';
+import {profilePhotoKey,enrichSharedProfile} from './artistProfileIdentity';
 
 export default function DMProfileHistory({ history, selected, message, rangeMessages = [], room, isAdmin, onClose, onSaved }) {
-  const initial = Math.max(0, history.findIndex(p => p.id === selected?.id || p.avatar_url === selected?.avatar_url));
+  const initial = Math.max(0, history.findIndex(p => p.id === selected?.id || (profilePhotoKey(p.avatar_url) === profilePhotoKey(selected?.avatar_url) && p.name===selected?.name)));
   const [index, setIndex] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(selected?.name || room?.display_name || '');
@@ -21,7 +21,7 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
   const [endId,setEndId] = useState(message?.id || '');
   const close = useRef(null);
   const dialog = useRef(null);
-  const p = history[index] || selected || {};
+  const p = enrichSharedProfile(history[index] || selected || {},history);
   useEffect(() => {
     const previous = document.activeElement;
     close.current?.focus();
@@ -63,10 +63,7 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
         if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type) || file.size > 20 * 1024 * 1024) {
           throw new Error('20MB 이하 JPG, PNG, WEBP, GIF 사진을 선택해 주세요.');
         }
-        const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))].map(x => x.toString(16).padStart(2,'0')).join('');
-        const extension = file.type.split('/')[1];
-        const key = dmStorageKey(room.id, hash, extension);
-        avatar = (await uploadToR2(key.bucket, key.path, file, file.type)).publicUrl;
+        avatar = await uploadArtistProfile(file);
       }
       if (!avatar) throw new Error('프로필 사진을 선택해 주세요.');
       const { data, error: e } = await supabase.from('dm_profile_overrides').insert({
@@ -77,13 +74,14 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
         name: name.trim(), status_emoji: emoji, avatar_url: croppedProfileURL(avatar,crop),
       }).select().single();
       if (e) throw e;
-      onSaved(data); onClose();
+      onSaved(data);window.dispatchEvent(new Event('weverse:profile-changed')); onClose();
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
   return <div className="dm-modal-backdrop" onClick={() => { if (!busy) onClose(); }}>
     <section ref={dialog} className="dm-profile-viewer" role="dialog" aria-modal="true" aria-label="프로필 기록" onClick={e => e.stopPropagation()}>
       <button ref={close} className="dm-viewer-close" aria-label="닫기" disabled={busy} onClick={onClose}><X size={22}/></button>
+      <div className="dm-profile-cover">{p.background_url && <img src={p.background_url} alt="프로필 배경"/>}</div>
       <div className="dm-profile-carousel">
         <button aria-label="이전 프로필" disabled={index === 0 || busy} onClick={() => move(index-1)}><ChevronLeft size={36}/></button>
         <div className={`dm-profile-large ${editing ? 'is-cropping' : ''}`}
@@ -93,6 +91,7 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
           {preview || p.avatar_url ? <img draggable={false} style={editing ? cropStyle(crop) : p.avatar_url?.includes('#dm-crop=') ? cropStyle(profileCrop(p.avatar_url)) : undefined} src={preview || p.avatar_url} alt="프로필 사진"/> : <UserRound size={64}/>}</div>
         <button aria-label="다음 프로필" disabled={index >= history.length-1 || busy} onClick={() => move(index+1)}><ChevronRight size={36}/></button>
       </div>
+      <div className="dm-profile-details">
       <div className="dm-profile-dots">{history.length <= 12 ? history.map((entry,i) => <button key={entry.id || i} aria-label={`${i+1}번째 프로필`} aria-current={i === index ? 'true' : undefined} disabled={busy} onClick={() => move(i)}/>) : <span>{index+1} / {history.length}</span>}</div>
       <h2>{editing ? name : p.name || room?.display_name}</h2>
       <div className="dm-profile-emoji" style={{fontSize:Math.max(12,Math.min(36,72/Math.max(1,Array.from(editing ? emoji : p.status_emoji || '').length)))}}>{editing ? emoji : p.status_emoji || '—'}</div>
@@ -108,6 +107,7 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
         <button disabled={busy} type="submit"><Save size={16}/>{busy ? '저장 중' : '적용'}</button>
       </form>}
       {error && <p role="alert" className="dm-error">{error}</p>}
+      </div>
     </section>
   </div>;
 }

@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { isSharedDMKey } from './dmStorageKey';
+import { isSharedProfileKey } from './artistProfileIdentity';
 
 async function callStorageApi(body) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -46,8 +47,8 @@ export async function uploadToR2(bucket, path, file, contentType = file.type) {
 }
 
 export async function deleteFromR2(keys) {
-  // DM originals are shared by chat and galleries; deleting a gallery row must not remove them.
-  const safeKeys = [...new Set((keys || []).filter(key => key && !isSharedDMKey(key)))];
+  // Shared chat/profile originals must survive deletion of an individual gallery row.
+  const safeKeys = [...new Set((keys || []).filter(key => key && !isSharedDMKey(key) && !isSharedProfileKey(key)))];
   if (!safeKeys.length) return;
   await callStorageApi({ action: "delete", keys: safeKeys });
 }

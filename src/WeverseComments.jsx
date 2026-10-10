@@ -1,27 +1,33 @@
 import {useEffect,useState} from 'react';
+import {UserRound,CornerDownRight} from 'lucide-react';
 import {supabase} from './supabaseClient';
 import ArchiveLayout from './ArchiveLayout';
 import WeverseProfile from './WeverseProfile';
 import {commentThread,sourcePostId,WEVERSE_ARTIST} from './weverseData';
 import './styles/Weverse.css';
+import useTabVisibility from './useTabVisibility';
 
 function CommentContent({row,isAdmin}) {
   return <div className={row.is_target_artist?'wv-comment-author artist':'wv-comment-author'}>
     {row.author_type==='artist' && row.is_target_artist && <WeverseProfile at={row.created_at} sourceId={row.post_id} name={row.author} isAdmin={isAdmin}/>}
+    {row.author_type==='fan' && <span className="wv-fan-avatar" role="img" aria-label="원도어 기본 프로필"><UserRound size={23}/></span>}
     <div><div className="wv-comment-byline"><strong>{row.author_type==='fan'?'원도어':row.author}</strong><time>{row.created_at?new Date(row.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):''}</time></div>
       <p className="wv-comment-text">{row.text}</p>{row.images?.map((image,i)=><img className="wv-comment-image" key={i} src={image.url} alt="댓글 이미지" loading="lazy"/>)}
       {row.links?.map(url=><a key={url} className="wv-comment-link" href={url} target="_blank" rel="noreferrer">{url}</a>)}</div></div>;
 }
 
 function Branch({row,isAdmin,depth=0}) {
-  return <li className={`wv-comment-node ${depth?'is-reply':''}`}><CommentContent row={row} isAdmin={isAdmin}/>
+  return <li className={`wv-comment-node ${depth?'is-reply':''}`}>{depth>0 && <CornerDownRight className="wv-reply-marker" size={16} aria-hidden="true"/>}<CommentContent row={row} isAdmin={isAdmin}/>
     {!!row.children.length && <ol>{row.children.map(child=><Branch key={child.id} row={child} isAdmin={isAdmin} depth={depth+1}/>)}</ol>}</li>;
 }
 
 export function PostComments({post,isAdmin}) {
+  const visibility = useTabVisibility();
+  const visible = isAdmin || visibility.allowed?.comments === true;
   const source=sourcePostId(post.weverse_url);
   const [rows,setRows]=useState([]),[error,setError]=useState(''),[loading,setLoading]=useState(true);
   useEffect(()=>{
+    if (!visible) return;
     let active=true;
     async function load() {
       const result=[];
@@ -34,8 +40,8 @@ export function PostComments({post,isAdmin}) {
       if(active){setRows(result);setLoading(false);}
     }
     load();return()=>{active=false;};
-  },[source]);
-  if(!source)return null;
+  },[source,visible]);
+  if(!source || !visible)return null;
   return <section className="wv-post-comments"><h3>댓글 {rows.length}</h3>
     {loading?<p role="status">불러오는 중</p>:error?<p role="alert">{error}</p>:rows.length?<ol>{commentThread(rows).map(row=><Branch key={row.id} row={row} isAdmin={isAdmin}/>)}</ol>:<p className="wv-empty">아직 가져온 댓글이 없습니다.</p>}</section>;
 }

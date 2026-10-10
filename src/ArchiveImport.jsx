@@ -6,7 +6,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 import { supabase } from "./supabaseClient";
-import { withVideoSourceTags } from "./videoClassification";
+import { videoSourceTags, withVideoSourceTags } from "./videoClassification";
 import "./styles/App.css";
 import "./styles/ImportEditor.css";
 import { MEDIA_TYPES, VIDEO_TYPES, UNCLASSIFIED_TYPE } from "./mediaClassification";
@@ -1010,35 +1010,6 @@ function ArchiveImport() {
   }
 
   // =========================
-  // 미디어 순서 변경
-  // =========================
-
-  function moveMedia(draftId, index, direction) {
-    setDrafts((prev) =>
-      prev.map((draft) => {
-        if (draft.id !== draftId) {
-          return draft;
-        }
-
-        const media = [...draft.media];
-
-        const target = index + direction;
-
-        if (target < 0 || target >= media.length) {
-          return draft;
-        }
-
-        [media[index], media[target]] = [media[target], media[index]];
-
-        return {
-          ...draft,
-          media,
-        };
-      }),
-    );
-  }
-
-  // =========================
   // 가져온 게시글 초안 삭제
   // =========================
 
@@ -1903,7 +1874,7 @@ function ArchiveImport() {
                     {item.kind === "video" && (
                       <>
                         <select aria-label="동영상 유형" value={item.type || ""} disabled={draft.status === "uploaded"} onChange={(event) => updateMedia(draft.id, item.id, "type", event.target.value)}><option value="">선택 안됨</option>{VIDEO_TYPES.map((type) => <option key={type}>{type}</option>)}</select>
-                        <label>영상 위 텍스트<textarea rows={3} maxLength={5000} value={item.overlayText || ""} disabled={draft.status === "uploaded"} onChange={(event) => updateMedia(draft.id, item.id, "overlayText", event.target.value)} placeholder="모먼트 영상 위 텍스트" /></label>
+                        {!videoSourceTags(item, { weverse_url: draft.postWeverseUrl }, draft.folderPath).includes("DM") && <label>영상 위 텍스트<textarea rows={3} maxLength={5000} value={item.overlayText || ""} disabled={draft.status === "uploaded"} onChange={(event) => updateMedia(draft.id, item.id, "overlayText", event.target.value)} placeholder="모먼트 영상 위 텍스트" /></label>}
                         <select aria-label="동영상 머리색" value={item.hairColor || ""} disabled={draft.status === "uploaded"} onChange={(event) => updateMedia(draft.id, item.id, "hairColor", event.target.value)}><option value="">머리색 선택</option>{["흑발", "갈발", "금발", "적발", "은발", "핑머", "주머", "와인", "베이지"].map((color) => <option key={color}>{color}</option>)}</select>
 
                         <label style={{ display: "grid", gap: "4px" }}>
@@ -1944,28 +1915,6 @@ function ArchiveImport() {
                       </>
                     )}
 
-                    {/* 순서 */}
-
-                    <div className="archive-import-order">
-                      <button
-                        type="button"
-                        disabled={index === 0 || draft.status === "uploaded"}
-                        onClick={() => moveMedia(draft.id, index, -1)}
-                      >
-                        ↑
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={
-                          index === draft.media.length - 1 ||
-                          draft.status === "uploaded"
-                        }
-                        onClick={() => moveMedia(draft.id, index, 1)}
-                      >
-                        ↓
-                      </button>
-                    </div>
                   </div>
                 </div>
               ))}

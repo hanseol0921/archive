@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
+import { reportTargetPath } from "./contentReportLinks";
 import "./styles/ReportManager.css";
 
 const TYPE_LABELS = { photo: "사진", video: "동영상", post: "게시글", diary: "다이어리", archive: "자료 누락" };
@@ -73,7 +74,7 @@ function ReportManager() {
               <div className="report-manager-target">{report.target_label || `ID ${report.target_id}`}</div>
               <p>{report.message}</p>
               <div className="report-manager-actions">
-                {report.page_url && <a href={report.page_url} target="_blank" rel="noreferrer">대상 페이지 열기</a>}
+                {reportTargetPath(report) && <a href={reportTargetPath(report)} target="_blank" rel="noreferrer">{report.target_type === "photo" ? "사진 상세 · 정보 수정" : "대상 페이지 열기"}</a>}
                 <button type="button" onClick={() => toggleResolved(report)}>
                   {report.status === "resolved" ? "미처리로 되돌리기" : "처리 완료"}
                 </button>

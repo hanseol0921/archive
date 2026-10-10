@@ -1,3 +1,5 @@
+import ArchiveLayout from "./ArchiveLayout";
+import useTabVisibility from "./useTabVisibility";
 import { useEffect, useState } from "react";
 import Archive from "./Archive";
 import Login from "./Login";
@@ -9,8 +11,10 @@ import Guestbook from "./Guestbook";
 import { GlobalBgmPlayer } from "./ArchiveLayout";
 import Home from "./Home";
 import WeverseComments from './WeverseComments';
+import DM from './DM';
 
 function App() {
+  const visibility = useTabVisibility();
   const [path, setPath] = useState(window.location.pathname);
 
   useEffect(() => {
@@ -25,6 +29,11 @@ function App() {
 
   if (path === "/login") return <Login />;
 
+  const publicTabs = { '/': 'home', '/photos': 'photos', '/videos': 'videos', '/diary': 'diary', '/guestbook': 'guestbook', '/comments': 'comments', '/posts': 'posts', '/dm': 'dm' };
+  const tab = publicTabs[path];
+  if (tab && (!visibility.ready || visibility.allowed[tab] !== true)) {
+    return <ArchiveLayout activeTab={tab}><p role={visibility.error ? "alert" : "status"}>{visibility.error || (visibility.ready ? "비공개 탭입니다." : "불러오는 중")}</p></ArchiveLayout>;
+  }
   let page;
   const showBgm = !path.startsWith("/admin") || ["/admin", "/admin/home", "/admin/videos", "/admin/posts", "/admin/diary", "/admin/guestbook", "/admin/dm"].includes(path);
   if (path.startsWith("/admin")) page = <AdminRoute />;
@@ -32,6 +41,7 @@ function App() {
   else if (path === "/photos") page = <Archive isAdmin={false} />;
   else if (path === "/videos") page = <Videos isAdmin={false} />;
   else if (path === "/posts") page = <Posts isAdmin={false} />;
+  else if (path === "/dm") page = <DM isAdmin={false} />;
   else if (path === '/comments') page = <WeverseComments />;
   else if (path === "/diary") page = <Diary isAdmin={false} />;
   else if (path === "/guestbook") page = <Guestbook isAdmin={false} />;

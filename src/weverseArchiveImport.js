@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { uploadToR2 } from './r2Storage';
 import { WEVERSE_ARTIST } from './weverseData';
+import {sharedProfileAssets,profileAssetCache} from './artistProfileAssets';
 
 export function validateWeverseArchive(value) {
   if (!['weverse-comments-archive','weverse-profile-archive'].includes(value?.format)
@@ -37,7 +38,7 @@ export async function importWeverseArchive(archive,files,progress) {
   validateWeverseArchive(archive);
   const {error:setup}=await supabase.rpc('import_weverse_comments',{p_posts:[],p_comments:[],p_profiles:[]});
   if(setup) throw new Error(`먼저 Supabase에서 scripts/weverse-comments-profiles.sql을 실행해 주세요. ${setup.message}`);
-  const cache=new Map();
+  const cache=profileAssetCache(await sharedProfileAssets());
   const existing=await allRows('weverse_comments','id,images');
   const roots=await allRows('weverse_comment_posts','id,images');
   const profiles=await allRows('weverse_profile_snapshots','id,avatar_url,background_url');

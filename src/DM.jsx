@@ -7,12 +7,15 @@ import { messageProfile, profileEvidence, effectiveProfileHistory } from './dmPr
 import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing } from './dmChat';
 import DMProfileHistory from './DMProfileHistory';
 import { profileCrop, cropStyle } from './profileCrop';
+import { sharedProfileAssets } from './artistProfileAssets';
+import { sharedDMProfiles,sharedDMOverrides } from './artistProfileIdentity';
 
 // Keep only room/profile metadata in memory, never message bodies.
 const dmHeaderCache = new Map();
 supabase.auth.onAuthStateChange(event => {
   if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') dmHeaderCache.clear();
 });
+window.addEventListener('weverse:profile-changed',()=>dmHeaderCache.clear());
 
 function dateLabel(value) {
   return new Date(value).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' });
@@ -83,7 +86,11 @@ export default function DM({ isAdmin = false }) {
       metadata.current = { roomId, promise: Promise.all([
         supabase.from('dm_profiles').select('*').eq('room_id', roomId).order('observed_at', { ascending: false }),
         supabase.from('dm_profile_overrides').select('*').eq('room_id', roomId).order('created_at', { ascending: false }),
+        roomId==='WRBQM41' ? sharedProfileAssets() : Promise.resolve([]),
       ]).then(results => {
+        const shared=results.pop();
+        results[0]={...results[0],data:sharedDMProfiles(results[0].data||[],shared.filter(p=>p.member_id && !p.from_at),roomId)};
+        results[1]={...results[1],data:[...(results[1].data||[]),...sharedDMOverrides(shared,roomId)]};
         for (const response of results) if (response.error) throw response.error;
         if (version === generation.current) {
           const nextProfiles = results[0].data || [];
@@ -139,6 +146,12 @@ export default function DM({ isAdmin = false }) {
     const timer = setTimeout(() => { cursor.current = null; load(); }, search.trim() ? 250 : 0);
     return () => { clearTimeout(timer); generation.current += 1; };
   }, [load, search]);
+
+  useEffect(()=>{
+    const refresh=()=>{metadata.current=null;void load();};
+    window.addEventListener('weverse:profile-changed',refresh);
+    return()=>window.removeEventListener('weverse:profile-changed',refresh);
+  },[load]);
 
   useEffect(() => {
     let active = true;

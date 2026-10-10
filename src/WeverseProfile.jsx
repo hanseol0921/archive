@@ -2,12 +2,19 @@ import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {Camera,ChevronLeft,ChevronRight,Save,UserRound,X} from 'lucide-react';
 import {supabase} from './supabaseClient';
-import {uploadToR2} from './r2Storage';
+import {sharedProfileAssets,uploadArtistProfile} from './artistProfileAssets';
+import {uniqueArtistProfiles,profilePhotoKey,enrichSharedProfile} from './artistProfileIdentity';
 import {cropStyle,profileCrop,croppedProfileURL} from './profileCrop';
 import {WEVERSE_ARTIST,resolveWeverseProfile,kstInput,inputToUTC} from './weverseData';
 import './styles/Weverse.css';
 
 let cache;
+window.addEventListener('weverse:profile-changed',()=>{cache=null;});
+supabase.auth.onAuthStateChange(event=>{
+  if(['SIGNED_IN','SIGNED_OUT'].includes(event)) {
+    cache=null;setTimeout(()=>window.dispatchEvent(new Event('weverse:profile-changed')),0);
+  }
+});
 function loadProfiles() {
   if(!cache) cache=(async()=>{
     const snapshots=[],overrides=[];
@@ -18,6 +25,9 @@ function loadProfiles() {
         target.push(...data);if(data.length<500) break;
       }
     }
+    const shared=await sharedProfileAssets();
+    snapshots.push(...shared.filter(p=>p.room_id==='WRBQM41' && !p.through_sent_at).map(p=>({...p,id:`dm:${p.id}`,member_id:WEVERSE_ARTIST,time_basis:'observed'})));
+    overrides.push(...shared.filter(p=>p.room_id==='WRBQM41' && p.through_sent_at && p.from_sent_at).map(p=>({...p,id:`dm:${p.id}`,from_at:p.from_sent_at,through_at:p.through_sent_at})));
     return {snapshots,overrides};
   })().catch(error=>{cache=null;throw error;});
   return cache;
@@ -31,7 +41,8 @@ export default function WeverseProfile({at,sourceId=null,name='리우',isAdmin=f
     refresh();window.addEventListener('weverse:profile-changed',refresh);
     return()=>{active=false;window.removeEventListener('weverse:profile-changed',refresh);};
   },[]);
-  const profile=resolveWeverseProfile(state.snapshots,state.overrides,at,sourceId);
+  const selectedProfile=resolveWeverseProfile(state.snapshots,state.overrides,at,sourceId);
+  const profile=enrichSharedProfile(selectedProfile,state.snapshots,selectedProfile?.time_basis==='manual'?at:null);
   return <><button className="wv-avatar" title={error||'위버스 프로필'} aria-label={`${name} 위버스 프로필`} onClick={()=>setOpen(true)}>
     {profile?.avatar_url?<img src={profile.avatar_url} style={cropStyle(profileCrop(profile.avatar_url))} alt=""/>:<UserRound size={24}/>}
     {isAdmin && <span className="wv-avatar-camera"><Camera size={20}/></span>}</button>
@@ -41,12 +52,8 @@ export default function WeverseProfile({at,sourceId=null,name='리우',isAdmin=f
 function ProfileViewer({at,selected,state,name,isAdmin,onClose}) {
   const raw=[...state.snapshots,...state.overrides.map(p=>({...p,time_basis:'manual',observed_at:p.created_at}))]
     .sort((a,b)=>Date.parse(a.effective_at||a.observed_at)-Date.parse(b.effective_at||b.observed_at));
-  const history=[];
-  for(const p of raw) {
-    const previous=history.at(-1);
-    if(!previous || ['name','message','avatar_url','background_url'].some(key=>p[key]!==previous[key])) history.push(p);
-  }
-  const [index,setIndex]=useState(()=>Math.max(0,history.findIndex(p=>p.id===selected?.id)));
+  const history=uniqueArtistProfiles(raw);
+  const [index,setIndex]=useState(()=>Math.max(0,history.findIndex(p=>p.id===selected?.id || (profilePhotoKey(p.avatar_url)===profilePhotoKey(selected?.avatar_url) && p.name===selected?.name))));
   const [editing,setEditing]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const p=history[index]||selected||{name};
   const [draft,setDraft]=useState(()=>({name:p.name||name,message:p.message||'',from:kstInput(at),through:kstInput(at)}));
@@ -78,9 +85,7 @@ function ProfileViewer({at,selected,state,name,isAdmin,onClose}) {
   }
   async function upload(asset) {
     if(!asset) return null;
-    if(!['image/jpeg','image/png','image/webp','image/gif'].includes(asset.type)||asset.size>20*1024*1024) throw new Error('20MB 이하 이미지 파일을 선택해 주세요.');
-    const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',await asset.arrayBuffer()))].map(x=>x.toString(16).padStart(2,'0')).join('');
-    return (await uploadToR2('photos',`weverse/${hash}.${asset.type.split('/')[1]}`,asset,asset.type)).publicUrl;
+    return uploadArtistProfile(asset);
   }
   async function save() {
     setBusy(true);setError('');
@@ -100,7 +105,7 @@ function ProfileViewer({at,selected,state,name,isAdmin,onClose}) {
   return <div className="wv-profile-backdrop" onClick={()=>{if(!busy)onClose();}}>
     <section ref={dialog} className="wv-profile-viewer" role="dialog" aria-modal="true" aria-label="위버스 프로필 기록" onClick={e=>e.stopPropagation()}>
       <button ref={close} className="wv-profile-close" title="닫기" aria-label="닫기" disabled={busy} onClick={onClose}><X size={22}/></button>
-      {p.background_url && <img className="wv-profile-background" src={p.background_url} alt="프로필 배경"/>}
+      <div className="wv-profile-cover">{p.background_url && <img className="wv-profile-background" src={p.background_url} alt="프로필 배경"/>}</div>
       <div className="wv-profile-carousel"><button title="이전 프로필" aria-label="이전 프로필" disabled={!index||busy} onClick={()=>move(index-1)}><ChevronLeft/></button>
         <div className={`wv-profile-photo ${editing?'is-cropping':''}`}
           onPointerDown={e=>{if(!editing||busy)return;e.currentTarget.setPointerCapture(e.pointerId);drag.current={x:e.clientX,y:e.clientY,crop};}}
@@ -108,6 +113,7 @@ function ProfileViewer({at,selected,state,name,isAdmin,onClose}) {
           onPointerUp={()=>{drag.current=null;}} onPointerCancel={()=>{drag.current=null;}}>
           {preview||p.avatar_url?<img src={preview||p.avatar_url} alt="프로필 사진" draggable={false} style={cropStyle(editing?crop:profileCrop(p.avatar_url))}/>:<UserRound size={64}/>}</div>
         <button title="다음 프로필" aria-label="다음 프로필" disabled={index>=history.length-1||busy} onClick={()=>move(index+1)}><ChevronRight/></button></div>
+      <div className="wv-profile-details">
       <div className="wv-profile-dots" aria-label="프로필 기록 위치">{history.map((item,i)=><button key={item.id} className={i===index?'active':''} aria-label={`${i+1}번째 프로필`} onClick={()=>move(i)} disabled={busy}/>)}</div>
       <h2>{p.name||name}</h2><p className="wv-profile-message">{p.message}</p>
       {p.observed_at && <p className="wv-profile-date">{p.time_basis==='verified'?'변경 시각':p.time_basis==='manual'?'관리자 설정':'수집 시각'} · {new Date(p.effective_at||p.observed_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})}</p>}
@@ -122,5 +128,6 @@ function ProfileViewer({at,selected,state,name,isAdmin,onClose}) {
         <label>배경 사진<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={e=>setBackground(e.target.files[0]||null)} disabled={busy}/></label>
         <button type="submit" disabled={busy}><Save size={16}/> 저장</button></form>}
       {error && <p role="alert">{error}</p>}
+      </div>
     </section></div>;
 }

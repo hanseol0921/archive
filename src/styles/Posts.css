@@ -3,6 +3,15 @@
   font-size: 12px;
   color: #aaa398;
 }
+.post-content[hidden] { display: none; }
+.post-page-detail { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; min-width: 0; overflow: hidden; padding: 0 3px 20px; text-align: left; }
+.post-page-back { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; width: fit-content; margin: 0 auto 16px 0; padding: 0; border: 0; background: transparent; color: #666; font: inherit; font-size: 13px; cursor: pointer; }
+.post-page-content { position: relative; flex: 1 1 0; min-height: 0; min-width: 0; width: 100%; box-sizing: border-box; overflow: auto; padding: 28px 32px 32px; background: #fff; border: 1px solid #ded9d0; border-radius: 8px; }
+.post-page-content .content-detail-menu { top: 20px; right: 20px; }
+@media(max-width:800px) {
+  .post-page-detail { display: block; flex: 0 0 auto; overflow: visible; }
+  .post-page-content { flex: 0 0 auto; padding: 20px 16px; overflow: visible; }
+}
 .post-content {
   position: relative;
   display: flex;

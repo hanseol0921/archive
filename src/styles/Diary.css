@@ -526,3 +526,7 @@
 .diary-post-back { display: block; flex: 0 0 auto; width: fit-content; margin-left: 0; margin-right: auto; text-align: left; }
 
 .diary-post-detail .diary-post-content { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+@media(max-width:800px) {
+  .diary-post-detail { display: block; flex: 0 0 auto; overflow: visible; }
+  .diary-post-detail .diary-post-content { flex: 0 0 auto; overflow: visible; }
+}

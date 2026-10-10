@@ -1,3 +1,4 @@
+import useTabVisibility from "./useTabVisibility";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabaseClient";
@@ -668,6 +669,8 @@ function ArchiveLayout({
     return () => observer.disconnect();
   }, []);
 
+  const tabVisibility = useTabVisibility();
+  const tabShown = (tab) => isAdmin || tabVisibility.allowed?.[tab] === true;
   const [visitorCounts, setVisitorCounts] = useState(() => cachedVisitorCounts);
   const [profileImage, setProfileImage] = useState(() => cachedProfileImage);
   const [uploadingProfile, setUploadingProfile] = useState(false);
@@ -1375,15 +1378,15 @@ function ArchiveLayout({
             ========================= */}
 
             <div className="archive-side-tabs">
-              <button
+              {tabShown("home") && <button
                 type="button"
                 className={`archive-side-tab ${activeTab === "home" ? "active" : ""}`}
                 onClick={goHome}
               >
                 홈
-              </button>
+              </button>}
 
-              <button
+              {tabShown("photos") && <button
                 type="button"
                 className={`archive-side-tab ${
                   activeTab === "photos" ? "active" : ""
@@ -1391,9 +1394,9 @@ function ArchiveLayout({
                 onClick={goPhotos}
               >
                 사진
-              </button>
+              </button>}
 
-              <button
+              {tabShown("videos") && <button
                 type="button"
                 className={`archive-side-tab ${
                   activeTab === "videos" ? "active" : ""
@@ -1401,15 +1404,15 @@ function ArchiveLayout({
                 onClick={goVideos}
               >
                 동영상
-              </button>
+              </button>}
 
-              {isAdmin && <button type="button" className={`archive-side-tab ${activeTab === 'dm' ? 'active' : ''}`}
-                onClick={() => navigateInsideArchive('/admin/dm')}>DM</button>}
+              {tabShown('dm') && <button type="button" className={`archive-side-tab ${activeTab === 'dm' ? 'active' : ''}`}
+                onClick={() => navigateInsideArchive(isAdmin ? '/admin/dm' : '/dm')}>DM</button>}
 
-              <button type="button" className={`archive-side-tab ${activeTab === 'comments' ? 'active' : ''}`}
-                onClick={()=>navigateInsideArchive(isAdmin?'/admin/comments':'/comments')}>댓글</button>
+              {tabShown('comments') && <button type="button" className={`archive-side-tab ${activeTab === 'comments' ? 'active' : ''}`}
+                onClick={()=>navigateInsideArchive(isAdmin?'/admin/comments':'/comments')}>댓글</button>}
 
-              <button
+              {tabShown("diary") && <button
                 type="button"
                 className={`archive-side-tab ${
                   activeTab === "diary" ? "active" : ""
@@ -1417,9 +1420,9 @@ function ArchiveLayout({
                 onClick={() => { if (activeTab === "diary" && onActiveTabClick) onActiveTabClick(); else goDiary(); }}
               >
                 다이어리
-              </button>
+              </button>}
 
-              <button
+              {tabShown("guestbook") && <button
                 type="button"
                 className={`archive-side-tab ${
                   activeTab === "guestbook" ? "active" : ""
@@ -1427,9 +1430,9 @@ function ArchiveLayout({
                 onClick={goGuestbook}
               >
                 방명록
-              </button>
+              </button>}
 
-              {isAdmin && (
+              {tabShown("posts") && (
                 <button
                   type="button"
                   className={`archive-side-tab ${

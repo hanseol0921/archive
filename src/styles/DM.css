@@ -267,16 +267,16 @@
 }
 .dm-profile-viewer {
   position: relative;
-  width: 520px;
+  width: 420px;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
   max-height: 88dvh;
   overflow-y: auto;
-  padding: 42px 20px 28px;
-  background: #e0e2e2;
-  border-radius: 4px;
-  text-align: center;
+  padding: 0;
+  background: #fff;
+  border-radius: 8px;
+  text-align: left;
   color: #17211d;
 }
 .dm-profile-viewer button {
@@ -298,16 +298,27 @@
   top: 10px;
   width: 30px;
   height: 30px;
+  z-index: 2;
 }
+.dm-profile-viewer .dm-viewer-close { background: white; border-radius: 50%; }
+.dm-profile-cover { width: 100%; height: min(52dvh,440px); min-height: 260px; background: #dcece5; overflow: hidden; }
+.dm-profile-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dm-profile-details { padding: 12px 28px 24px; overflow-wrap: anywhere; }
 .dm-profile-carousel {
+  position: relative;
   display: grid;
   grid-template-columns: 36px minmax(0,1fr) 36px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin: -46px 16px 0;
 }
 .dm-profile-large {
   aspect-ratio: 1;
-  width: 100%;
+  width: 96px;
+  height: 96px;
+  border: 4px solid white;
+  border-radius: 50%;
+  box-sizing: border-box;
   background: white;
   display: grid;
   place-items: center;
@@ -323,13 +334,13 @@
 .dm-profile-large img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   min-height: 0;
 }
 .dm-profile-dots {
   display: flex;
   gap: 7px;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   margin: 14px 0;
   flex-wrap: wrap;
@@ -345,10 +356,10 @@
   background: #588575;
 }
 .dm-profile-viewer h2 {
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1.3;
   overflow-wrap: anywhere;
-  margin: 18px 0;
+  margin: 0 0 8px;
 }
 .dm-profile-emoji {
   margin: 0 auto;
@@ -407,12 +418,13 @@
 }
 @media(max-width:800px) {
   .dm-profile-viewer {
-    padding: 40px 10px 20px;
+    padding: 0;
   }
   .dm-profile-carousel {
     gap: 4px;
     grid-template-columns: 26px minmax(0,1fr) 26px;
   }
+  .dm-profile-details { padding: 12px 24px 24px; }
 }
 .dm-profile-history {
   background: white;

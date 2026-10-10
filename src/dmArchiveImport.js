@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient';
 import { uploadToR2 } from './r2Storage';
 import { dmStorageKey } from './dmStorageKey';
 import { loadStoredDMState } from './dmStoredFiles';
+import {sharedProfileAssets,profileAssetCache} from './artistProfileAssets';
 
 export function validateDMArchive(value) {
   if (value?.format !== 'weverse-dm-archive' || value.version !== 1 || !value.room?.id
@@ -70,6 +71,8 @@ export async function importDMArchive(archive, files, progress) {
     if (profile.official_avatar_file) localFile(files, profile.official_avatar_file);
   }
   const uploaded = new Map();
+  const profileFiles=new Set([...archive.profiles.flatMap(p=>[p.avatar_file,p.official_avatar_file]),...archive.messages.map(m=>m.avatar_file)].filter(Boolean));
+  const sharedFiles=profileAssetCache(await sharedProfileAssets());
   const {files:storedFiles,messageIds:existingMessages} = await loadStoredDMState(supabase, archive.room.id);
   const stats={newMessages:0,existingMessages:0,uploadedFiles:0,reusedFiles:0};
   async function media(path, expectedHash) {
@@ -81,8 +84,13 @@ export async function importDMArchive(archive, files, progress) {
     const extension = path.split('.').pop().toLowerCase();
     if (!['jpg','jpeg','png','gif','webp','mp4'].includes(extension)) throw new Error('지원하지 않는 미디어 파일입니다.');
     const type = extension === 'mp4' ? 'video/mp4' : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+    if(profileFiles.has(path) && sharedFiles.has(digest)) {
+      stats.reusedFiles++;uploaded.set(path,sharedFiles.get(digest));return sharedFiles.get(digest);
+    }
     // Content-addressed keys make retry safe; an interrupted import never deletes shared files.
-    const { bucket, path: storagePath } = dmStorageKey(archive.room.id, digest, extension);
+    const { bucket, path: storagePath } = profileFiles.has(path)
+      ? {bucket:'photos',path:`weverse/${digest}.${extension==='jpeg'?'jpg':extension}`}
+      : dmStorageKey(archive.room.id, digest, extension);
     const storedName = `${digest}.${extension}`;
     if (storedFiles.has(storedName)) {
       stats.reusedFiles++;
@@ -94,6 +102,7 @@ export async function importDMArchive(archive, files, progress) {
     stats.uploadedFiles++;
     storedFiles.set(storedName, publicUrl);
     uploaded.set(path, publicUrl);
+    if(profileFiles.has(path)) sharedFiles.set(digest,publicUrl);
     return publicUrl;
   }
   const profiles = [];

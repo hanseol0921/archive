@@ -8,7 +8,7 @@ export function rememberDMFiles(rows, roomId, files = new Map()) {
         const url = new URL(value);
         if (url.protocol !== 'https:' || url.hostname !== 'media.riwooarchive.com') continue;
         const key = decodeURIComponent(url.pathname.slice(1));
-        const prefixes = [`photos/dm/${roomId}/`, `videos/dm/${roomId}/`, `dm/${roomId}/`];
+        const prefixes = [`photos/dm/${roomId}/`, `videos/dm/${roomId}/`, `dm/${roomId}/`, 'photos/weverse/', 'weverse/'];
         const prefix = prefixes.find(p => key.startsWith(p));
         if (!prefix) continue;
         const name = key.slice(prefix.length);

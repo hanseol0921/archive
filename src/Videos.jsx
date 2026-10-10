@@ -12,7 +12,7 @@ import "./styles/Videos.css";
 import VideoLibrary from "./VideoLibrary";
 import ArchiveVideoPlayer, { LazyVideoThumbnail } from "./ArchiveVideoPlayer";
 import { weverseFolderMatches } from "./youtubeContent";
-import { withVideoSourceTags } from "./videoClassification";
+import { videoSourceTags, withVideoSourceTags } from "./videoClassification";
 import { isPhotoVisible, isDmMedia } from "./photoVisibility";
 import useArchiveVisibility from "./useArchiveVisibility";
 
@@ -709,7 +709,7 @@ function WeverseVideos({ isAdmin = false, folderSidebar, folderControls, folderI
 
                       {isAdmin && editingVideo && (
                         <div className="video-detail-editor">
-                          <label>영상 위 텍스트<textarea rows={3} maxLength={5000} value={editOverlayText} onChange={(event) => setEditOverlayText(event.target.value)} placeholder="모먼트 영상 위에 적힌 텍스트를 입력하세요" /></label>
+                          {!videoSourceTags(selectedVideo, getPost(selectedVideo)).includes("DM") && <label>영상 위 텍스트<textarea rows={3} maxLength={5000} value={editOverlayText} onChange={(event) => setEditOverlayText(event.target.value)} placeholder="모먼트 영상 위에 적힌 텍스트를 입력하세요" /></label>}
                           <label>
                             머리색
                             <select

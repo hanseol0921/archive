@@ -1,5 +1,8 @@
+import {profilePhotoKey,profileTimeline,enrichSharedProfile} from './artistProfileIdentity.js';
+
 export function messageProfile(message, profiles, overrides = []) {
   const at = Date.parse(message.sent_at);
+  const timeline=profileTimeline(profiles);
   const override = overrides.filter(p => {
     if (p.room_id !== message.room_id) return false;
     if (p.from_sent_at) {
@@ -16,8 +19,8 @@ export function messageProfile(message, profiles, overrides = []) {
     if (id !== p.through_message_id) return id < p.through_message_id;
     return (message.body_index ?? 0) <= p.through_body_index;
   }).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id.localeCompare(a.id))[0];
-  if (override) return { ...override, basis: 'manual' };
-  const applicable = profiles.filter(p => Date.parse(p.observed_at) <= at)
+  if (override) return {...enrichSharedProfile(override,profiles,message.sent_at),basis:'manual'};
+  const applicable = timeline.filter(p => Date.parse(p.observed_at) <= at)
     .sort((a, b) => Date.parse(b.observed_at) - Date.parse(a.observed_at))[0];
   const attached = message.blocks?.find(b => b.type === 'profile');
   if (applicable) return { ...applicable, basis: 'observed' };
@@ -41,7 +44,7 @@ export function effectiveProfileHistory(messages, profiles, overrides) {
   for (const message of chronological) {
     const p = messageProfile(message, profiles, overrides);
     if (!p.avatar_url) continue;
-    const key = JSON.stringify([p.avatar_url,p.name || '',p.status_emoji || '']);
+    const key = JSON.stringify([profilePhotoKey(p.avatar_url),p.name || '',p.status_emoji || '']);
     active.delete(key);
     active.set(key,{...p,id:p.id || key});
   }

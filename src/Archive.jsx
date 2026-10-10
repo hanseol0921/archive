@@ -40,6 +40,7 @@ function Archive({ isAdmin = false }) {
   });
 
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const requestedPhotoOpened = useRef(false);
   const [expandedTags, setExpandedTags] = useState(false);
   const [tagsOverflow, setTagsOverflow] = useState(false);
   const detailTagsRef = useRef(null);
@@ -112,6 +113,22 @@ function Archive({ isAdmin = false }) {
 
   const [saving, setSaving] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
+
+  useEffect(() => {
+    const requestedId = new URLSearchParams(window.location.search).get("photo");
+    if (!requestedId || requestedPhotoOpened.current || !photos.length) return;
+    if (!isAdmin && !visibility.ready) return;
+    const photo = photos.find((item) => String(item.id) === requestedId);
+    const allExtras = { scenery: true, food: true, members: true, dogs: true, other: true, dm: true };
+    requestedPhotoOpened.current = true;
+    if (!photo || (!isAdmin && !isPhotoVisible(photo, allExtras, visibility.allowed))) {
+      alert("사진이 삭제되었거나 볼 수 없는 자료입니다.");
+      return;
+    }
+    setSelectedPhoto(photo);
+    if (isAdmin) openEditMode(photo);
+    else setEditMode(false);
+  }, [photos, isAdmin, visibility.ready, visibility.allowed]);
 
   useEffect(() => {
     const tags = detailTagsRef.current;
@@ -1584,8 +1601,7 @@ const hairColorAliases = {
                           previewUrl:
                             selectedPhoto.thumbnail_url ||
                             selectedPhoto.image_url,
-                          pageUrl:
-                            selectedPhoto.weverse_url || window.location.href,
+                          pageUrl: new URL(`/photos?${new URLSearchParams({ photo: String(selectedPhoto.id) })}`, window.location.origin).href,
                         })
                       }
                     >

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "./supabaseClient";
+import { photoDetailPath } from "./contentReportLinks";
 import "./styles/ContentReport.css";
 
 function ContentReport({ target, onClose }) {
@@ -20,7 +21,9 @@ function ContentReport({ target, onClose }) {
       p_target_id: String(target.id),
       p_target_label: target.label || null,
       p_preview_url: target.previewUrl || null,
-      p_page_url: target.pageUrl || window.location.href,
+      p_page_url: target.type === "photo" && photoDetailPath(target.id)
+        ? new URL(photoDetailPath(target.id), window.location.origin).href
+        : target.pageUrl || window.location.href,
       p_message: cleaned,
     });
     setSaving(false);
