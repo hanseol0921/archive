@@ -1324,15 +1324,18 @@ function handleEditCropEnd(
                     getPostMedia(
                       post.id
                     );
+                  const pollPhotos = media.filter(item => item.mediaKind === "photo");
+                  const candidatePhotos = new Set((post.content_blocks || []).filter(block => block.type === "poll").flatMap(block => (block.options || []).map(option => pollPhotos[option.photo_index])).filter(Boolean));
+                  const otherMedia = media.filter(item => !candidatePhotos.has(item));
 
                   const previewMedia =
-                    media.slice(
+                    otherMedia.slice(
                       0,
                       4
                     );
 
                   const remainingCount =
-                    media.length -
+                    otherMedia.length -
                     previewMedia.length;
 
                   return (
@@ -1377,7 +1380,6 @@ function handleEditCropEnd(
 
                       </div>
 
-                      {poll && <div className="post-poll-preview"><span className="post-poll-badge">투표 게시글</span><strong>{poll.question}</strong><span>{poll.allow_multiple ? "복수 선택" : "단일 선택"}{poll.total_count != null && ` · 전체 ${Number(poll.total_count).toLocaleString("ko-KR")}표`}{poll.status === "ACTIVE" ? " · 진행 중" : ["CLOSED", "ENDED"].includes(poll.status) ? " · 마감" : ""}</span></div>}
 
                       {/* 본문 미리보기 */}
 
@@ -1386,6 +1388,8 @@ function handleEditCropEnd(
                           {previewText}
                         </div>
                       )}
+
+                      {(post.content_blocks || []).filter(block => block.type === "poll").map((block, index) => <WeversePoll key={block.id || index} block={block} photos={pollPhotos} compact />)}
 
                       {/* 미디어 최대 4개 */}
 

@@ -789,8 +789,3 @@
 .post-body-preview {
   text-align: left !important;
 }
-
-.post-poll-preview { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 16px 0; font-size: 14px; }
-.post-poll-badge { padding: 3px 8px; border: 1px solid var(--archive-accent); border-radius: 4px; color: var(--archive-accent-text); font-size: 12px; }
-.post-poll-preview > strong { font-size: 16px; font-weight: 600; }
-.post-poll-preview > span:last-child { color: #777; font-size: 12px; }

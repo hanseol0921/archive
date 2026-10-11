@@ -11,6 +11,7 @@ import "./styles/App.css";
 import "./styles/ImportEditor.css";
 import { MEDIA_TYPES, VIDEO_TYPES, UNCLASSIFIED_TYPE } from "./mediaClassification";
 import TagPicker from "./TagPicker";
+import WeversePoll from "./WeversePoll";
 import { mapConcurrent } from "./concurrentTasks";
 import { createLocalVideoThumbnail } from "./videoThumbnail";
 import { deleteFromR2, uploadToR2 } from "./r2Storage";
@@ -775,7 +776,9 @@ function ArchiveImport() {
 
       postAuthor: "리우",
 
-      postContent: metadata.content,
+      postContent: metadata.contentBlocks?.some(block => block.type === "poll")
+        ? metadata.contentBlocks.filter(block => block.type === "text").map(block => block.content || "").join("\n\n")
+        : metadata.content,
 
       postWeverseUrl: metadata.weverseUrl,
 
@@ -975,6 +978,9 @@ function ArchiveImport() {
           ? {
               ...draft,
               [field]: value,
+              ...(field === "postContent" && draft.contentBlocks.some(block => block.type === "poll") ? {
+                contentBlocks: [{ type: "text", content: value }, ...draft.contentBlocks.filter(block => block.type !== "text")],
+              } : {}),
             }
           : draft,
       ),
@@ -1772,6 +1778,10 @@ function ArchiveImport() {
             {/* =====================
                   미디어
               ===================== */}
+
+            {draft.contentBlocks.filter(block => block.type === "poll").map((block, index) => (
+              <WeversePoll key={block.id || index} block={block} compact photos={draft.media.filter(item => item.kind === "photo").map(item => ({ image_url: item.previewUrl }))} />
+            ))}
 
             <div className="archive-import-media-title">
               미디어{" "}
