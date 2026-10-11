@@ -9,6 +9,7 @@ import TagPicker from "./TagPicker";
 import WeverseProfile from './WeverseProfile';
 import {PostComments} from './WeverseComments';
 import {sourcePostId,postTimestamp} from './weverseData';
+import WeversePoll from './WeversePoll';
 
 function Diary({ isAdmin = false }) {
   const [posts, setPosts] = useState([]);
@@ -302,6 +303,7 @@ function Diary({ isAdmin = false }) {
     const orderedPhotos = media.filter((item) => item.mediaKind === "photo");
     const orderedVideos = media.filter((item) => item.mediaKind === "video");
     return blocks.map((block, blockIndex) => {
+      if (block?.type === 'poll') return <WeversePoll key={`poll-${blockIndex}`} block={block} photos={orderedPhotos} />;
       if (block?.type === "text" && block.content) {
         return <div className="diary-modal-body" key={`text-${blockIndex}`}>{block.content}</div>;
       }

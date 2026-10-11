@@ -12,6 +12,7 @@ import { deleteFromR2, getR2Key } from "./r2Storage";
 import WeverseProfile from './WeverseProfile';
 import {PostComments} from './WeverseComments';
 import {sourcePostId,postTimestamp} from './weverseData';
+import WeversePoll from './WeversePoll';
 
 function Posts({ isAdmin = false }) {
   const [posts, setPosts] = useState([]);
@@ -213,6 +214,7 @@ function Posts({ isAdmin = false }) {
     const orderedPhotos = media.filter((item) => item.mediaKind === "photo");
     const orderedVideos = media.filter((item) => item.mediaKind === "video");
     return blocks.map((block, blockIndex) => {
+      if (block?.type === 'poll') return <WeversePoll key={`poll-${blockIndex}`} block={block} photos={orderedPhotos} />;
       if (block?.type === "text" && block.content) {
         return <div className="post-modal-body" key={`text-${blockIndex}`}>{block.content}</div>;
       }

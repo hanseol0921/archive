@@ -5,6 +5,16 @@ export function collectDMMedia(messages, type = 'all') {
         ? [{ id: `${message.id}:${index}`, sent_at: message.sent_at, block }] : []));
 }
 
+export function findDMSearchHits(messages, query) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  const originals = new Map(messages.map(message => [message.id, message]));
+  return displayMessages(messages.filter(message => !message.deleted))
+    .filter(row => row.blocks.some(block => ['text','nickname_candidate'].includes(block.type) && String(block.text || '').toLowerCase().includes(needle)))
+    .sort((a,b) => Date.parse(b.sent_at)-Date.parse(a.sent_at) || b.id.localeCompare(a.id))
+    .map(row => ({id: row.id, sent_at: row.sent_at, message: originals.get(row.source_id)}));
+}
+
 export function displayMessages(messages) {
   return messages.flatMap(message => {
     const profile = message.blocks.filter(b => b.type === 'profile');

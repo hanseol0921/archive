@@ -892,7 +892,7 @@ function ArchiveImport() {
 
         const draftUrl = String(draft.postWeverseUrl || "").trim();
 
-        if (draftUrl && existingPostUrls.has(draftUrl)) {
+        if (draftUrl && existingPostUrls.has(draftUrl) && !draft.contentBlocks.some(block => block.type === 'poll')) {
           skippedDuplicateCount++;
 
           // createDraft에서 만든 미리보기 Object URL도 정리
@@ -1221,7 +1221,7 @@ function ArchiveImport() {
       if (draft.postWeverseUrl) {
         const { data: existingPost, error: duplicateError } = await supabase
           .from("weverse_posts")
-          .select("id")
+          .select("id,content,content_blocks")
           .eq("weverse_url", draft.postWeverseUrl)
           .maybeSingle();
 
@@ -1230,6 +1230,24 @@ function ArchiveImport() {
         }
 
         if (existingPost) {
+          if (draft.contentBlocks.some(block => block.type === 'poll')) {
+            const {data: existingPhotos, error: photoError} = await supabase.from('photos').select('id').eq('post_id', existingPost.id);
+            if (photoError) throw photoError;
+            if ((existingPhotos || []).length !== draft.media.filter(item => item.kind === 'photo').length) {
+              throw new Error('기존 게시글의 사진 수가 투표 PDF와 다릅니다. 사진 누락을 먼저 복구한 뒤 다시 가져와 주세요.');
+            }
+            const {mergePollSnapshots} = await import('./weversePolls');
+            const previousBlocks = existingPost.content_blocks?.length ? existingPost.content_blocks : [
+              ...(existingPost.content ? [{type: 'text', content: existingPost.content}] : []),
+              ...draft.contentBlocks.filter(block => ['photo', 'video'].includes(block.type)),
+            ];
+            const blocks = mergePollSnapshots(previousBlocks, draft.contentBlocks);
+            const {error: updateError} = await supabase.from('weverse_posts').update({content_blocks: blocks}).eq('id', existingPost.id);
+            if (updateError) throw updateError;
+            releaseDraftPreviewUrls(draft);
+            setDrafts(prev => prev.filter(item => item.id !== draftId));
+            return true;
+          }
           throw new Error(
             "이미 같은 원본 링크의 게시글이 업로드되어 있습니다.",
           );

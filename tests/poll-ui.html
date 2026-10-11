@@ -1,0 +1,8 @@
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;font-family:Arial,sans-serif"><main id="root" style="max-width:680px;margin:24px auto;padding:0 20px"></main><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import Poll from '/src/WeversePoll.jsx';
+const block=await (await fetch('/poll-source')).json();
+const photos=block.options.map((option,index)=>({image_url:'/poll-photo/'+index}));
+createRoot(document.getElementById('root')).render(React.createElement(Poll,{block,photos}));
+</script></body></html>

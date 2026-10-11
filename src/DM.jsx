@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Gift, X, UserRound, RotateCcw, Upload, ChevronsUp, Camera, Search, Images } from 'lucide-react';
+import { Gift, X, UserRound, RotateCcw, Upload, ChevronsUp, Camera, Search, Images, ChevronUp, ChevronDown } from 'lucide-react';
 import ArchiveLayout from './ArchiveLayout';
 import { supabase } from './supabaseClient';
 import './styles/DM.css';
 import { messageProfile, profileEvidence, effectiveProfileHistory } from './dmProfiles';
-import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing, collectDMMedia } from './dmChat';
+import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing, collectDMMedia, findDMSearchHits } from './dmChat';
 import DMProfileHistory from './DMProfileHistory';
 import { profileCrop, cropStyle } from './profileCrop';
 import { sharedProfileAssets } from './artistProfileAssets';
@@ -21,7 +21,18 @@ function dateLabel(value) {
   return new Date(value).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function MessageBody({ message }) {
+function HighlightedText({ text, query }) {
+  const value = String(text || ''), needle = query.trim();
+  if (!needle) return value;
+  const parts = []; let from = 0, found;
+  while ((found = value.toLowerCase().indexOf(needle.toLowerCase(), from)) !== -1) {
+    parts.push(value.slice(from, found), <mark className="dm-search-highlight" key={found}>{value.slice(found, found + needle.length)}</mark>);
+    from = found + needle.length;
+  }
+  parts.push(value.slice(from)); return parts;
+}
+
+function MessageBody({ message, query = '' }) {
   const [open, setOpen] = useState(false);
   const hasGift = message.blocks.some(b => b.gift);
   if (message.deleted) return <span className="dm-deleted">삭제된 메시지</span>;
@@ -31,7 +42,7 @@ function MessageBody({ message }) {
     </button>}
     {message.blocks.map((b, i) => {
       if (b.gift && !open) return null;
-      if (b.type === 'text') return <span key={i}>{b.text}</span>;
+      if (b.type === 'text') return <span key={i}><HighlightedText text={b.text} query={query} /></span>;
       if (b.type === 'nickname_candidate') return <mark key={i} title="설정된 사용자 이름과 일치하는 표현. 이름 호출 여부는 확정되지 않았습니다.">{b.text}</mark>;
       if (b.type === 'photo') return <a className="dm-image-link" key={i} href={b.url} target="_blank" rel="noreferrer"><img src={b.url} alt="DM 사진" loading="lazy" /></a>;
       if (b.type === 'video') return <video key={i} controls playsInline preload="none" poster={b.thumbnail_url || undefined} src={b.url} />;
@@ -47,6 +58,10 @@ export default function DM({ isAdmin = false }) {
   const [profiles, setProfiles] = useState(() => dmHeaderCache.get(isAdmin)?.profiles || []);
   const [messages, setMessages] = useState([]);
   const [search, setSearch] = useState('');
+  const [searchHits, setSearchHits] = useState([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchSelection, setSearchSelection] = useState(null);
+  const searchGeneration = useRef(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [view, setView] = useState('chat');
   const [mediaType, setMediaType] = useState('all');
@@ -114,7 +129,6 @@ export default function DM({ isAdmin = false }) {
       else query = query.contains('blocks', [{ type: mediaType }]);
       query = query.eq('deleted', false);
     }
-    if (search.trim()) query = query.ilike('text', `%${search.trim().replace(/[\\%_]/g, '\\$&')}%`);
     if (date) {
       const start = new Date(`${date}T00:00:00+09:00`);
       query = query.gte('sent_at', start.toISOString()).lt('sent_at', new Date(start.getTime() + 86400000).toISOString());
@@ -150,12 +164,12 @@ export default function DM({ isAdmin = false }) {
       if (version !== generation.current) return;
       requestPending.current = false; setLoading(false); setError(e.message); setReadyRoom(roomId); setReadyView(`${roomId}:${view}:${mediaType}`); metadata.current = null;
     }
-  }, [roomId, search, date, isAdmin, view, mediaType]);
+  }, [roomId, date, isAdmin, view, mediaType]);
 
   useEffect(() => {
-    const timer = setTimeout(() => { cursor.current = null; load(); }, search.trim() ? 250 : 0);
+    const timer = setTimeout(() => { cursor.current = null; load(); }, 0);
     return () => { clearTimeout(timer); generation.current += 1; };
-  }, [load, search]);
+  }, [load]);
 
   useEffect(()=>{
     const refresh=()=>{metadata.current=null;void load();};
@@ -177,6 +191,75 @@ export default function DM({ isAdmin = false }) {
     return () => { active = false; };
   }, [roomId, profileOpen]);
 
+  const jumpToHit = useCallback(async (hit, key) => {
+    if (!hit || key !== searchGeneration.current) return;
+    const version = ++generation.current;
+    try {
+      const makeQuery = () => supabase.from('dm_messages').select('*').eq('room_id', roomId);
+      const [before, after] = await Promise.all([
+        makeQuery().lte('sent_at', hit.sent_at).order('sent_at', {ascending:false}).order('id', {ascending:false}).limit(50),
+        makeQuery().gte('sent_at', hit.sent_at).order('sent_at', {ascending:true}).order('id', {ascending:true}).limit(50),
+      ]);
+      if (key !== searchGeneration.current || version !== generation.current) return;
+      if (before.error) throw before.error;
+      if (after.error) throw after.error;
+      const context = new Map([...before.data, ...after.data, hit.message].map(message => [message.id, message]));
+      const rows = [...context.values()].sort((a,b) => Date.parse(a.sent_at)-Date.parse(b.sent_at) || a.id.localeCompare(b.id));
+      setMessages(rows); setMore(before.data.length === 50);
+      cursor.current = rows.length ? {sent_at:rows[0].sent_at, id:rows[0].id} : null;
+      requestPending.current = false; setLoading(false);
+      setReadyRoom(roomId); setReadyView(`${roomId}:chat:${mediaType}`);
+      setSearchSelection(hit.id);
+    } catch (err) { if (key === searchGeneration.current) setError(err.message); }
+  }, [roomId, mediaType]);
+
+  useEffect(() => {
+    const key = ++searchGeneration.current;
+    if (!search.trim() || !roomId || view !== 'chat') return;
+    const timer = setTimeout(async () => {
+      setSearchBusy(true); setError('');
+      try {
+        const result = await collectDMPages(async c => {
+          let query = supabase.from('dm_messages').select('*').eq('room_id', roomId).eq('deleted', false)
+            .ilike('text', `%${search.trim().replace(/[\\%_]/g, '\\$&')}%`)
+            .order('sent_at', {ascending:false}).order('id', {ascending:false}).limit(100);
+          if (date) {
+            const start = new Date(`${date}T00:00:00+09:00`);
+            query = query.gte('sent_at', start.toISOString()).lt('sent_at', new Date(start.getTime()+86400000).toISOString());
+          }
+          if(c) query = query.or(`sent_at.lt.${c.sent_at},and(sent_at.eq.${c.sent_at},id.lt.${c.id})`);
+          const {data, error:e} = await query;
+          if(e) throw e;
+          if(key !== searchGeneration.current) throw new Error('Cancelled');
+          return data || [];
+        }, null, true);
+        if(key !== searchGeneration.current) return;
+        const hits = findDMSearchHits(result.rows, search);
+        setSearchHits(hits); setSearchSelection(null);
+        await jumpToHit(hits[0], key);
+      } catch(err) { if(key === searchGeneration.current) setError(err.message); }
+      finally { if(key === searchGeneration.current) setSearchBusy(false); }
+    }, 250);
+    return () => { clearTimeout(timer); searchGeneration.current += 1; };
+  }, [search, roomId, date, view, jumpToHit]);
+
+  useEffect(() => {
+    if (!searchSelection) return;
+    const node = [...(timeline.current?.querySelectorAll('[data-message-id]') || [])].find(element => element.dataset.messageId === searchSelection);
+    node?.scrollIntoView({block:'center', behavior:'smooth'});
+  }, [searchSelection, messages]);
+
+  const activeHit = searchHits.findIndex(hit => hit.id === searchSelection);
+  function changeSearch(value) {
+    searchGeneration.current += 1;
+    setSearch(value); setSearchHits([]); setSearchSelection(null); setSearchBusy(false);
+    if(value) setView('chat');
+  }
+  function moveSearch(direction) {
+    const next = searchHits[activeHit + direction];
+    if(next) void jumpToHit(next, searchGeneration.current);
+  }
+
   const contentReady = readyRoom === roomId && (!roomId || readyView === `${roomId}:${view}:${mediaType}`);
   const room = rooms.find(r => r.id === roomId);
   const roomProfiles = profiles.filter(p => p.room_id === roomId);
@@ -188,7 +271,7 @@ export default function DM({ isAdmin = false }) {
   }
   const rangeMessages = displayMessages(allMessages.filter(m=>m.room_id===roomId));
   const history = effectiveProfileHistory(rangeMessages.length ? rangeMessages : chatRows,roomProfiles,overrides);
-  return <ArchiveLayout isAdmin={isAdmin} activeTab="dm" search={search} onSearchChange={setSearch} searchPlaceholder="DM 검색">
+  return <ArchiveLayout isAdmin={isAdmin} activeTab="dm" search={search} onSearchChange={changeSearch} searchPlaceholder="DM 검색">
     <section className="dm-chat">
       <header className="dm-header">
         <button className="dm-profile-button" onClick={() => openHistory(profile)} aria-label="프로필 기록" disabled={!profile}>
@@ -204,7 +287,7 @@ export default function DM({ isAdmin = false }) {
         <button title="저장된 첫 메시지로 이동" aria-label="저장된 첫 메시지로 이동" disabled={loading} onClick={() => load(false, true)}><ChevronsUp size={18} /></button>
         {isAdmin && <a href="/admin/dm/import" title="DM 가져오기" aria-label="DM 가져오기"><Upload size={18} /></a>}
       </header>
-      {searchOpen && <div className="dm-search-row"><Search size={16} /><input autoFocus type="search" aria-label="DM 메시지 검색" placeholder="검색어를 입력하세요" value={search} onChange={event => setSearch(event.target.value)} />{search && <button type="button" aria-label="검색 초기화" onClick={() => setSearch('')}><X size={16} /></button>}</div>}
+      {searchOpen && <div className="dm-search-row"><Search size={16} /><input autoFocus type="search" aria-label="DM 메시지 검색" placeholder="검색어를 입력하세요" value={search} onChange={event => changeSearch(event.target.value)} />{search.trim() && <><span className="dm-search-count" role="status">{searchBusy ? "검색 중" : `${activeHit < 0 ? 0 : activeHit+1} / ${searchHits.length}`}</span><button type="button" aria-label="이전 검색 결과" disabled={searchBusy || activeHit <= 0} onClick={()=>moveSearch(-1)}><ChevronUp size={18}/></button><button type="button" aria-label="다음 검색 결과" disabled={searchBusy || activeHit < 0 || activeHit >= searchHits.length-1} onClick={()=>moveSearch(1)}><ChevronDown size={18}/></button><button type="button" onClick={()=>{changeSearch("");void load();}}>최근 대화</button></>}{search && <button type="button" aria-label="검색 초기화" onClick={() => changeSearch('')}><X size={16} /></button>}</div>}
       {view === 'media' && <nav className="dm-media-tabs" aria-label="DM 미디어 종류">{[['all','전체'],['photo','사진'],['video','동영상'],['audio','녹음본']].map(([value,label]) => <button type="button" key={value} aria-pressed={mediaType === value} onClick={() => setMediaType(value)}>{label}</button>)}</nav>}
       {error && <p className="dm-error" role="alert">{error}</p>}
       <div className={`dm-timeline${!contentReady || !messages.length ? " dm-timeline-empty" : ""}`} ref={timeline} aria-busy={loading}>
@@ -223,7 +306,7 @@ export default function DM({ isAdmin = false }) {
           const spacing = sameDay ? messageSpacing(m, previous) : 'normal';
           return <div key={m.id}>
           {(i === 0 || dateLabel(previous.sent_at) !== dateLabel(m.sent_at)) && <div className="dm-day">{dateLabel(m.sent_at)}</div>}
-          <article className={`dm-message dm-spacing-${spacing}`}>
+          <article data-message-id={m.id} className={`dm-message dm-spacing-${spacing}${m.id === searchSelection ? " dm-search-current" : ""}`}>
             {grouped ? <div className="dm-avatar-space" aria-hidden="true" /> :
             <button className="dm-message-avatar" onClick={() => openHistory(p, m)} aria-label="메시지 프로필 기록" title={profileEvidence(p)}>
               {p.avatar_url ? <img src={p.avatar_url} style={cropStyle(profileCrop(p.avatar_url))} alt="프로필" loading="lazy" /> : <UserRound size={22} />}
@@ -233,7 +316,7 @@ export default function DM({ isAdmin = false }) {
               <div className="dm-message-meta">
               {!grouped && <div className="dm-sender">{p.name || room?.artist_name}{p.status_emoji && <span>{p.status_emoji}</span>}</div>}
               </div>
-              <div className="dm-bubble"><MessageBody message={m} /></div>
+              <div className="dm-bubble"><MessageBody message={m} query={search} /></div>
             </div>
             <time dateTime={m.sent_at}>{new Date(m.sent_at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}</time>
           </article>

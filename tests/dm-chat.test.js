@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing, collectDMMedia } from '../src/dmChat.js';
+import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing, collectDMMedia, findDMSearchHits } from '../src/dmChat.js';
+
+test('search points to matching bodies without removing surrounding conversation', () => {
+  const messages = [
+    {id:'a', sent_at:'2026-01-01T00:00:00Z', blocks:[{type:'text',body_index:0,text:'Hello there'}, {type:'text',body_index:1,text:'hello again'}]},
+    {id:'b', sent_at:'2026-01-02T00:00:00Z', blocks:[{type:'text',text:'unrelated context'}]},
+    {id:'c', sent_at:'2026-01-03T00:00:00Z', deleted:true, blocks:[{type:'text',text:'hello deleted'}]},
+  ];
+  const hits=findDMSearchHits(messages,'HELLO');
+  assert.deepEqual(new Set(hits.map(hit=>hit.id)),new Set(['a#0','a#1']));
+  assert.equal(hits[0].message,messages[0]);
+  assert.equal(messages.length,3);
+  assert.deepEqual(findDMSearchHits(messages,'missing'),[]);
+  assert.deepEqual(findDMSearchHits(messages,' '),[]);
+});
 
 test('media gallery includes older recordings and excludes deleted or missing media', () => {
   const messages = [

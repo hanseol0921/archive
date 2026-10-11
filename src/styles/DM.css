@@ -80,6 +80,10 @@
 .dm-search-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #fff; border-bottom: 1px solid #ddd; }
 .dm-search-row input { flex: 1; min-width: 0; padding: 7px 9px; border: 1px solid #ddd; border-radius: 5px; font: inherit; font-size: 14px; }
 .dm-search-row button { border: 0; background: transparent; cursor: pointer; }
+.dm-search-row button:disabled { opacity: .4; cursor: default; }
+.dm-search-count { flex-shrink: 0; font-size: 12px; color: #777; }
+.dm-search-highlight { background: #ffedac; color: #333; border-radius: 2px; }
+.dm-search-current .dm-bubble { outline: 2px solid var(--archive-accent); outline-offset: 3px; }
 .dm-media-tabs { display: flex; gap: 16px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #ddd; }
 .dm-media-tabs button { border: 0; padding: 3px 0; background: transparent; color: #777; font-size: 14px; cursor: pointer; }
 .dm-media-tabs button[aria-pressed="true"],.dm-header button[aria-pressed="true"] { color: var(--archive-accent-text); font-weight: 700; }
