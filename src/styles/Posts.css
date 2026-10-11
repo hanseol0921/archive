@@ -101,6 +101,17 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+.post-card-preview .weverse-poll h3 {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.8;
+  color: #625e57;
+}
+.post-modal-blocks .weverse-poll h3 {
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.7;
+}
 .post-photo-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
