@@ -1355,7 +1355,11 @@ function handleEditCropEnd(
                       {/* 날짜 / 시간 */}
 
                       <div className="post-card-header">
-
+                        <div className="post-list-profile" onClick={event => event.stopPropagation()}>
+                          <WeverseProfile at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)} name={post.author} isAdmin={isAdmin} />
+                        </div>
+                        <div className="post-list-identity">
+                          {post.author && <div className="post-author">{post.author}</div>}
                         <div>
                           <span className="post-date">
                             {formatDate(
@@ -1371,12 +1375,7 @@ function handleEditCropEnd(
                             </span>
                           )}
                         </div>
-
-                        {post.author && (
-                          <div className="post-author">
-                            {post.author}
-                          </div>
-                        )}
+                        </div>
 
                       </div>
 

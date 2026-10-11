@@ -746,11 +746,17 @@
 .post-card-preview .post-card-header {
   padding-bottom: 0;
   border-bottom: 0;
+  justify-content: flex-start;
+  gap: 10px;
 }
+.post-list-profile { flex: 0 0 auto; }
+.post-list-profile .wv-avatar { width: 40px; height: 40px; }
+.post-list-identity { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.post-list-identity .post-author { font-size: 14px; font-weight: 600; color: #625e57; }
 .post-preview-media {
   width: 100%;
   max-width: none;
-  grid-auto-rows: min(240px, 30vh);
+  grid-auto-rows: min(380px, 48vh);
   margin-left: auto;
   margin-right: auto;
 }
@@ -759,7 +765,7 @@
 }
 .post-preview-media.count-3,
 .post-preview-media.count-4 {
-  grid-auto-rows: min(150px, 20vh);
+  grid-auto-rows: min(210px, 27vh);
 }
 .post-preview-media .post-preview-media-item,
 .post-preview-media.count-1 .post-preview-media-item {
