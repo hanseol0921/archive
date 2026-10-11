@@ -49,8 +49,6 @@ function Posts({ isAdmin = false }) {
 
   const [postSaving, setPostSaving] = useState(false);
   const [editMedia, setEditMedia] = useState([]);
-  const [selectedPostIds, setSelectedPostIds] = useState([]);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
   const requestedEditOpenedRef = useRef(false);
   const [reportTarget, setReportTarget] = useState(null);
 
@@ -1234,62 +1232,6 @@ function handleEditCropEnd(
     }
   }
 
-  function togglePostSelection(postId) {
-    setSelectedPostIds((prev) =>
-      prev.includes(postId)
-        ? prev.filter((id) => id !== postId)
-        : [...prev, postId]
-    );
-  }
-
-  function toggleSelectAllPosts() {
-    if (selectedPostIds.length === posts.length) {
-      setSelectedPostIds([]);
-      return;
-    }
-
-    setSelectedPostIds(posts.map((post) => post.id));
-  }
-
-  async function handleBulkDeletePosts() {
-    if (selectedPostIds.length === 0) {
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `선택한 게시글 ${selectedPostIds.length}개를 삭제할까요?\n\n연결된 사진과 동영상도 모두 삭제됩니다.`
-    );
-
-    if (!confirmed) return;
-
-    setBulkDeleting(true);
-
-    let deletedCount = 0;
-
-    try {
-      const targets = posts.filter((post) =>
-        selectedPostIds.includes(post.id)
-      );
-
-      for (const post of targets) {
-        const deleted = await handleDeletePost(post, {
-          skipConfirm: true,
-          silent: true,
-        });
-
-        if (deleted) {
-          deletedCount++;
-        }
-      }
-
-      setSelectedPostIds([]);
-
-      alert(`${deletedCount}개 게시글을 삭제했습니다.`);
-    } finally {
-      setBulkDeleting(false);
-    }
-  }
-
   // =========================
   // 선택 게시글 미디어
   // =========================
@@ -1359,39 +1301,6 @@ function handleEditCropEnd(
                 게시글 목록
             ========================= */}
 
-            {isAdmin && posts.length > 0 && (
-              <div className="post-bulk-actions">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={
-                      posts.length > 0 &&
-                      selectedPostIds.length === posts.length
-                    }
-                    onChange={toggleSelectAllPosts}
-                  />
-                  전체 선택
-                </label>
-
-                <span>
-                  {selectedPostIds.length}개 선택
-                </span>
-
-                <button
-                  type="button"
-                  disabled={
-                    selectedPostIds.length === 0 ||
-                    bulkDeleting
-                  }
-                  onClick={handleBulkDeletePosts}
-                >
-                  {bulkDeleting
-                    ? "삭제 중..."
-                    : "선택 삭제"}
-                </button>
-              </div>
-            )}
-
             <div className="post-list">
 
               {loading && (
@@ -1409,6 +1318,8 @@ function handleEditCropEnd(
 
               {!loading &&
                 filteredPosts.map((post) => {
+                  const poll = post.content_blocks?.find(block => block?.type === "poll");
+                  const previewText = poll ? (post.content_blocks || []).filter(block => block.type === "text").map(block => block.content || "").join("\n\n") : post.content;
                   const media =
                     getPostMedia(
                       post.id
@@ -1438,22 +1349,6 @@ function handleEditCropEnd(
                         );
                       }}
                     >
-                      {isAdmin && (
-                        <label
-                          className="post-select-checkbox"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedPostIds.includes(post.id)}
-                            onChange={() =>
-                              togglePostSelection(post.id)
-                            }
-                          />
-                          선택
-                        </label>
-                      )}
-
                       {/* 날짜 / 시간 */}
 
                       <div className="post-card-header">
@@ -1482,11 +1377,13 @@ function handleEditCropEnd(
 
                       </div>
 
+                      {poll && <div className="post-poll-preview"><span className="post-poll-badge">투표 게시글</span><strong>{poll.question}</strong><span>{poll.allow_multiple ? "복수 선택" : "단일 선택"}{poll.total_count != null && ` · 전체 ${Number(poll.total_count).toLocaleString("ko-KR")}표`}{poll.status === "ACTIVE" ? " · 진행 중" : ["CLOSED", "ENDED"].includes(poll.status) ? " · 마감" : ""}</span></div>}
+
                       {/* 본문 미리보기 */}
 
-                      {post.content && (
+                      {previewText && (
                         <div className="post-body post-body-preview">
-                          {post.content}
+                          {previewText}
                         </div>
                       )}
 
