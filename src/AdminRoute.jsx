@@ -18,6 +18,7 @@ import DMImport from "./DMImport";
 import AdminSettings from "./AdminSettings";
 import WeverseComments from './WeverseComments';
 import WeverseImport from './WeverseImport';
+import WordStatistics from './WordStatistics';
 
 function AdminRoute() {
   const [session, setSession] = useState(null);
@@ -58,6 +59,7 @@ function AdminRoute() {
   }
 
   if (path === "/admin/settings") return <AdminSettings />;
+  if (path === '/admin/statistics') return <WordStatistics isAdmin />;
   if (path === '/admin/comments') return <WeverseComments isAdmin />;
   if (path === '/admin/weverse/import') return <WeverseImport />;
   if (path === "/admin/import") return <ArchiveImport />;

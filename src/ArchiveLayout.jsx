@@ -1404,6 +1404,8 @@ function ArchiveLayout({
 
               {tabShown('comments') && <button type="button" className={`archive-side-tab ${activeTab === 'comments' ? 'active' : ''}`}
                 onClick={()=>navigateInsideArchive(isAdmin?'/admin/comments':'/comments')}>댓글</button>}
+              {tabShown('statistics') && <button type="button" className={`archive-side-tab ${activeTab === 'statistics' ? 'active' : ''}`}
+                onClick={()=>navigateInsideArchive(isAdmin?'/admin/statistics':'/statistics')}>통계</button>}
 
               {tabShown("diary") && <button
                 type="button"

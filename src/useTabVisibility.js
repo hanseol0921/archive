@@ -5,8 +5,9 @@ export const ARCHIVE_TABS = [
   ["home", "홈"], ["photos", "사진"], ["videos", "동영상"],
   ["diary", "다이어리"], ["guestbook", "방명록"], ["comments", "댓글"],
   ["dm", "DM"], ["posts", "게시글"],
+  ['statistics', '단어 통계'],
 ];
-const DEFAULTS = { home: true, photos: true, videos: true, diary: true, guestbook: true, comments: false, posts: false, dm: false };
+const DEFAULTS = { home: true, photos: true, videos: true, diary: true, guestbook: true, comments: false, posts: false, dm: false, statistics: false };
 const KEY = "archive_tab_visibility";
 let cached = null;
 let pending = null;

@@ -13,6 +13,7 @@ import Home from "./Home";
 import WeverseComments from './WeverseComments';
 import DM from './DM';
 import useDocumentTitle from './useDocumentTitle';
+import WordStatistics from './WordStatistics';
 
 function App() {
   const visibility = useTabVisibility();
@@ -32,6 +33,7 @@ function App() {
   if (path === "/login") return <Login />;
 
   const publicTabs = { '/': 'home', '/photos': 'photos', '/videos': 'videos', '/diary': 'diary', '/guestbook': 'guestbook', '/comments': 'comments', '/posts': 'posts', '/dm': 'dm' };
+  publicTabs['/statistics'] = 'statistics';
   const tab = publicTabs[path];
   if (tab && (!visibility.ready || visibility.allowed[tab] !== true)) {
     return <ArchiveLayout activeTab={tab}><p role={visibility.error ? "alert" : "status"}>{visibility.error || (visibility.ready ? "비공개 탭입니다." : "불러오는 중")}</p></ArchiveLayout>;
@@ -45,6 +47,7 @@ function App() {
   else if (path === "/posts") page = <Posts isAdmin={false} />;
   else if (path === "/dm") page = <DM isAdmin={false} />;
   else if (path === '/comments') page = <WeverseComments />;
+  else if (path === '/statistics') page = <WordStatistics />;
   else if (path === "/diary") page = <Diary isAdmin={false} />;
   else if (path === "/guestbook") page = <Guestbook isAdmin={false} />;
   else page = <Home isAdmin={false} />;

@@ -33,12 +33,22 @@ export async function uploadToR2(bucket, path, file, contentType = file.type) {
 
   let uploadResponse;
   const transferUrl = import.meta.env.DEV ? `/api/r2-upload?url=${encodeURIComponent(uploadUrl)}` : uploadUrl;
-  try { uploadResponse = await fetch(transferUrl, {
-    method: "PUT",
-    headers: { "Content-Type": type },
-    body: file,
-  }); } catch {
-    throw new Error(`R2 파일 전송 실패: 현재 주소 ${window.location.origin}의 CORS 허용 설정 또는 네트워크를 확인해 주세요.`);
+  // PUT replaces the same object, so retrying never creates a second file.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      uploadResponse = await fetch(transferUrl, {
+        method: "PUT",
+        headers: { "Content-Type": type },
+        body: file,
+      });
+      if (![408, 429, 500, 502, 503, 504].includes(uploadResponse.status) || attempt === 2) break;
+      await uploadResponse.body?.cancel();
+    } catch {
+      if (attempt === 2) {
+        throw new Error(`R2 파일 전송 실패: 연결 오류로 3회 시도했지만 전송하지 못했습니다. 현재 주소 ${window.location.origin}의 CORS 허용 설정 또는 네트워크를 확인해 주세요.`);
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
   }
   if (!uploadResponse.ok) {
     throw new Error(`R2 업로드 실패 (HTTP ${uploadResponse.status})`);

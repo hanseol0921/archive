@@ -1321,7 +1321,13 @@ function ArchiveImport() {
         const uploadOrder = photo ? nextUploadOrder++ : null;
         const path = `${draft.postDate}/${createdPostId}/${safeFileName(item.file.name)}`;
         async function transfer(path, file, contentType) {
-          const result = await uploadToR2(bucket, path, file, contentType);
+          let result;
+          try {
+            result = await uploadToR2(bucket, path, file, contentType);
+          } catch (error) {
+            const role = path.includes("/thumbnails/") ? "썸네일" : "원본";
+            throw new Error(`${item.file.name} (${role}, ${(file.size / 1024 / 1024).toFixed(1)}MB): ${error.message}`);
+          }
           uploadedFiles.push({ bucket, path });
           return result.publicUrl;
         }
