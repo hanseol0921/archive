@@ -2,6 +2,17 @@ import { supabase } from "./supabaseClient";
 import { isSharedDMKey } from './dmStorageKey';
 import { isSharedProfileKey } from './artistProfileIdentity';
 
+let diagnosticRequest;
+async function uploadFailureReason() {
+  if (!diagnosticRequest) {
+    diagnosticRequest = callStorageApi({ action: 'diagnose-upload' })
+      .then(result => result.error || 'R2 진단 결과를 받지 못했습니다.')
+      .catch(error => `R2 연결 진단 실패: ${error.message}`);
+    setTimeout(() => { diagnosticRequest = null; }, 30000);
+  }
+  return diagnosticRequest;
+}
+
 async function callStorageApi(body) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error("관리자 로그인이 필요합니다.");
@@ -45,7 +56,7 @@ export async function uploadToR2(bucket, path, file, contentType = file.type) {
       await uploadResponse.body?.cancel();
     } catch {
       if (attempt === 2) {
-        throw new Error(`R2 파일 전송 실패: 연결 오류로 3회 시도했지만 전송하지 못했습니다. 현재 주소 ${window.location.origin}의 CORS 허용 설정 또는 네트워크를 확인해 주세요.`);
+        throw new Error(`R2 파일 전송 실패: ${await uploadFailureReason()}`);
       }
     }
     await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));

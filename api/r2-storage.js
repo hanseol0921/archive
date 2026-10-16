@@ -3,6 +3,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createClient } from "@supabase/supabase-js";
 import process from "node:process";
 import { isArchiveAdmin } from "../src/adminAccess.js";
+import { diagnoseR2Upload } from '../server/r2-diagnostic.js';
 
 const requiredEnv = [
   "VITE_SUPABASE_URL",
@@ -63,6 +64,9 @@ export default async function handler(request, response) {
   const { action, key, keys, contentType } = request.body || {};
 
   try {
+    if (action === "diagnose-upload") {
+      return json(response, 200, await diagnoseR2Upload(r2, process.env.R2_BUCKET));
+    }
     if (action === "sign-upload") {
       if (!validKey(key)) return json(response, 400, { error: "올바르지 않은 파일 경로입니다." });
       const command = new PutObjectCommand({
