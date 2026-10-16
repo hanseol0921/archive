@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import process from "node:process";
 import { isArchiveAdmin } from "../src/adminAccess.js";
 import { diagnoseR2Upload } from '../server/r2-diagnostic.js';
+import { normalizeR2Endpoint } from '../server/r2-endpoint.js';
 
 const requiredEnv = [
   "VITE_SUPABASE_URL",
@@ -50,9 +51,12 @@ export default async function handler(request, response) {
   if (authError || !user) return json(response, 401, { error: "관리자 로그인이 만료되었습니다." });
   if (!isArchiveAdmin(user)) return json(response, 403, { error: "관리자만 파일을 변경할 수 있습니다." });
 
+  let endpoint;
+  try { endpoint = normalizeR2Endpoint(process.env.R2_ENDPOINT, process.env.R2_BUCKET); }
+  catch { return json(response, 500, { error: 'R2_ENDPOINT 설정을 확인해주세요. 버킷 경로를 제외한 HTTPS S3 API 주소가 필요합니다.' }); }
   const r2 = new S3Client({
     region: "auto",
-    endpoint: process.env.R2_ENDPOINT.replace(/\/$/, ""),
+    endpoint,
     credentials: {
       accessKeyId: process.env.R2_ACCESS_KEY_ID,
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,

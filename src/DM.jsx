@@ -32,6 +32,31 @@ function HighlightedText({ text, query }) {
   parts.push(value.slice(from)); return parts;
 }
 
+function DMPhoto({ url }) {
+  const [retry, setRetry] = useState(0);
+  const [failed, setFailed] = useState(false);
+  let source = url;
+  if (retry) {
+    try {
+      const fresh = new URL(url);
+      if (fresh.hostname === 'media.riwooarchive.com') {
+        fresh.searchParams.set('dm-retry', String(retry));
+        source = fresh.href;
+      }
+    } catch { /* Keep the stored address for invalid or external URLs. */ }
+  }
+  function tryAgain() { setFailed(false); setRetry(Date.now()); }
+  return <>
+    <a className="dm-image-link" href={source} target="_blank" rel="noreferrer">
+      <img src={source} alt="DM 사진" loading="lazy" onLoad={() => setFailed(false)} onError={() => {
+        if (!retry) tryAgain();
+        else setFailed(true);
+      }} />
+    </a>
+    {failed && <button type="button" className="dm-photo-retry" onClick={tryAgain}>사진 다시 불러오기</button>}
+  </>;
+}
+
 function MessageBody({ message, query = '' }) {
   const [open, setOpen] = useState(false);
   const hasGift = message.blocks.some(b => b.gift);
@@ -44,7 +69,7 @@ function MessageBody({ message, query = '' }) {
       if (b.gift && !open) return null;
       if (b.type === 'text') return <span key={i}><HighlightedText text={b.text} query={query} /></span>;
       if (b.type === 'nickname_candidate') return <mark key={i} title="설정된 사용자 이름과 일치하는 표현. 이름 호출 여부는 확정되지 않았습니다.">{b.text}</mark>;
-      if (b.type === 'photo') return <a className="dm-image-link" key={i} href={b.url} target="_blank" rel="noreferrer"><img src={b.url} alt="DM 사진" loading="lazy" /></a>;
+      if (b.type === 'photo') return <DMPhoto key={`${i}:${b.url}`} url={b.url} />;
       if (b.type === 'video') return <video key={i} controls playsInline preload="none" poster={b.thumbnail_url || undefined} src={b.url} />;
       if (b.type === 'audio') return <audio key={i} controls preload="none" src={b.url} aria-label="DM 음성" />;
       return null;
