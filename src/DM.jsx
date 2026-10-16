@@ -6,6 +6,7 @@ import './styles/DM.css';
 import { messageProfile, profileEvidence, effectiveProfileHistory } from './dmProfiles';
 import { displayMessages, sameMessageGroup, collectDMPages, messageSpacing, collectDMMedia, findDMSearchHits } from './dmChat';
 import DMProfileHistory from './DMProfileHistory';
+import ManagedImage from './ManagedImage';
 import { profileCrop, cropStyle } from './profileCrop';
 import { sharedProfileAssets } from './artistProfileAssets';
 import { sharedDMProfiles,sharedDMOverrides } from './artistProfileIdentity';
@@ -48,10 +49,7 @@ function DMPhoto({ url }) {
   function tryAgain() { setFailed(false); setRetry(Date.now()); }
   return <>
     <a className="dm-image-link" href={source} target="_blank" rel="noreferrer">
-      <img src={source} alt="DM 사진" loading="lazy" onLoad={() => setFailed(false)} onError={() => {
-        if (!retry) tryAgain();
-        else setFailed(true);
-      }} />
+      <ManagedImage key={source} src={source} alt="DM 사진" loading="lazy" onLoad={() => setFailed(false)} onError={() => setFailed(true)} />
     </a>
     {failed && <button type="button" className="dm-photo-retry" onClick={tryAgain}>사진 다시 불러오기</button>}
   </>;

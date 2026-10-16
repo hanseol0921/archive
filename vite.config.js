@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import photoDownload from './api/photo-download.js'
 import youtubeMetadata from './api/youtube-metadata.js'
+import youtubeSearch from './api/youtube-search.js'
 import weverseLiveMetadata from './api/weverse-live-metadata.js'
 import process from 'node:process'
 import { request as httpsRequest } from 'node:https'
@@ -46,6 +47,12 @@ function localPhotoDownload() {
 
 function localYoutubeMetadata() {
   return { name: 'local-youtube-metadata', configureServer(server) {
+    server.middlewares.use('/api/youtube-search', (request, response, next) => {
+      const url = new URL(request.url, 'http://localhost');
+      if (url.pathname !== '/') return next();
+      request.query = Object.fromEntries(url.searchParams);
+      void youtubeSearch(request, response);
+    });
     server.middlewares.use('/api/weverse-live-metadata', (request, response, next) => {
       const url = new URL(request.url, 'http://localhost');
       if (url.pathname !== '/') return next();

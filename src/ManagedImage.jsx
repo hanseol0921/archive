@@ -1,21 +1,21 @@
 import { useState } from 'react';
+import { cachedImageSource, rememberImageSource, retryImageSource } from './imageSourceCache';
 
-export default function ManagedImage({ src, originalSrc, ...props }) {
+export default function ManagedImage({ src, originalSrc, onError, onLoad, ...props }) {
   const [step, setStep] = useState(0);
   const [retry, setRetry] = useState(0);
-  const sources = [...new Set([src, originalSrc].filter(Boolean))];
+  const [remembered] = useState(() => cachedImageSource(src));
+  const sources = [...new Set([remembered, src, originalSrc].filter(Boolean))];
   let source = sources[Math.min(step, sources.length - 1)];
   if (retry) {
-    try {
-      const fresh = new URL(source);
-      if (fresh.hostname === 'media.riwooarchive.com') {
-        fresh.searchParams.set('image-retry', String(retry));
-        source = fresh.href;
-      }
-    } catch { /* Preserve external and relative image URLs. */ }
+    source = retryImageSource(source);
   }
-  return <img {...props} src={source} onError={() => {
+  return <img {...props} src={source} onLoad={event => {
+    rememberImageSource(src, source);
+    onLoad?.(event);
+  }} onError={event => {
     if (step < sources.length - 1) setStep(step + 1);
-    else if (!retry) setRetry(Date.now());
+    else if (!retry) setRetry(1);
+    else onError?.(event);
   }} />;
 }

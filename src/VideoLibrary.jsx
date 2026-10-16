@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Folder, Play, Plus, Pencil, Trash2 } from "lucide-react";
 import ArchiveLayout from "./ArchiveLayout";
 import WeverseLiveLibrary from "./WeverseLiveLibrary";
+import YoutubeSearch from './YoutubeSearch';
 import ArchiveFilters, { ArchiveSortControl } from "./ArchiveFilters";
 import { loadYoutubeMetadata, sortYoutubeItems, youtubeKstDate } from "./youtubeMetadata";
 import { supabase } from "./supabaseClient";
@@ -220,6 +221,12 @@ export default function VideoLibrary({ isAdmin, WeverseVideos }) {
     {loading && <p className="youtube-status">콘텐츠를 불러오는 중...</p>}
     {formOpen && isAdmin && <form className="youtube-form" onSubmit={save}>
       <h3>{editingId ? "콘텐츠 수정" : "콘텐츠 추가"}</h3>
+      <YoutubeSearch disabled={saving} selectedId={youtubeVideoId(draft.url)} registeredIds={items.filter(item => item.id !== editingId).map(item => youtubeVideoId(item.url))} onSelect={item => {
+        titleRequest.current += 1;
+        titleEdited.current = false;
+        setDraft(old => ({ ...old, url: `https://www.youtube.com/watch?v=${item.id}`, title: item.title.slice(0, 120) }));
+        setTitleStatus('영상을 선택했어요. 제목과 폴더를 확인한 뒤 저장해주세요.');
+      }} />
       <label>유튜브 링크<input required type="url" maxLength={1000} value={draft.url} onChange={(event) => changeYoutubeLink(event.target.value)} placeholder="https://www.youtube.com/watch?v=…" /></label>
       <label>제목<input required maxLength={120} value={draft.title} onChange={(event) => { titleEdited.current = Boolean(event.target.value.trim()); setDraft({ ...draft, title: event.target.value }); }} placeholder="링크를 넣으면 제목을 자동으로 가져옵니다" /></label>
       {titleStatus && <p className="youtube-form-note" role="status">{titleStatus}</p>}

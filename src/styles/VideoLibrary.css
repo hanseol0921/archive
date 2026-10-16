@@ -495,3 +495,18 @@
 .live-post-play span { position: absolute; display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 50%; background: #0008; }
 
 .youtube-add-content { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+.youtube-search { min-width: 0; padding-bottom: 16px; border-bottom: 1px solid #e5e5e5; }
+.youtube-search-input { display: flex; gap: 8px; margin-top: 8px; }
+.youtube-search-input input { min-width: 0; flex: 1; }
+.youtube-search-input button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: 0 0 auto; }
+.youtube-search-results { list-style: none; padding: 0; margin: 14px 0; max-height: 380px; overflow-y: auto; }
+.youtube-search-results li + li { border-top: 1px solid #ededed; }
+.youtube-search-results li > button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 4px; border: 0; border-radius: 0; background: #fff; text-align: left; cursor: pointer; }
+.youtube-search-results li > button[aria-pressed="true"] { outline: 1px solid var(--archive-accent); outline-offset: -1px; }
+.youtube-search-results li > button:disabled { opacity: .55; cursor: default; }
+.youtube-search-results img { width: 128px; height: 72px; object-fit: cover; border-radius: 4px; flex: 0 0 auto; }
+.youtube-search-results button > span { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.youtube-search-results strong { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.youtube-search-results small { font-size: 12px; color: #777; }
+.youtube-search-results .youtube-search-select { color: var(--archive-accent-text); }
+@media(max-width: 500px) { .youtube-search-results img { width: 96px; height: 54px; } }
