@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { isUnclassifiedType } from "./mediaClassification";
 import ArchiveLayout from "./ArchiveLayout";
+import ManagedImage from './ManagedImage';
+import { attachDMPhotoTimes, photoSourceTime } from './photoChronology';
 import ArchiveFilters, { ArchiveSortControl } from "./ArchiveFilters";
 import "./styles/App.css";
 import TagPicker from "./TagPicker";
@@ -262,7 +264,11 @@ function Archive({ isAdmin = false }) {
     }
 
     setPhotoPostTimes(allPostTimes);
-    setPhotos(allPhotos);
+    try { setPhotos(await attachDMPhotoTimes(supabase, allPhotos)); }
+    catch (error) {
+      console.error('DM 사진 수신 시각을 불러오지 못했습니다:', error);
+      setPhotos(allPhotos);
+    }
   }
 
   // =========================
@@ -1354,8 +1360,8 @@ const hairColorAliases = {
         if (dateDiff !== 0) return dateDiff;
 
         // 날짜가 같다면 사진 업로드 시각이 아니라 원본 위버스 게시 시각을 우선한다.
-        const aPostTime = photoPostTimes[String(a.post_id)]?.postedTime || 0;
-        const bPostTime = photoPostTimes[String(b.post_id)]?.postedTime || 0;
+        const aPostTime = photoSourceTime(a, photoPostTimes);
+        const bPostTime = photoSourceTime(b, photoPostTimes);
         const postedTimeDiff =
           descending
             ? bPostTime - aPostTime
@@ -1549,8 +1555,10 @@ const hairColorAliases = {
                 <span>✓</span>
               </label>
               <div className="photo">
-                <img
+                <ManagedImage
+                  key={`${photo.thumbnail_url}:${photo.image_url}`}
                   src={photo.thumbnail_url || photo.image_url}
+                  originalSrc={photo.image_url}
                   alt=""
                   loading={index < 12 ? "eager" : "lazy"}
                   fetchPriority={index < 6 ? "high" : "auto"}
@@ -1670,7 +1678,8 @@ const hairColorAliases = {
                 aria-label="사진 원본 확대 보기"
                 onClick={() => setZoomedPhoto(true)}
               >
-                <img
+                <ManagedImage
+                  key={selectedPhoto.image_url}
                   className="modal-image-main"
                   src={selectedPhoto.image_url}
                   alt="선택한 사진"
