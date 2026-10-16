@@ -63,3 +63,20 @@ test('history puts the most recently used profile on the right', () => {
     {id:'earlier',sent_at:'2026-10-02T12:00:00Z'}];
   assert.deepEqual(effectiveProfileHistory(rows,profiles,[]).map(p=>p.id),['old','new']);
 });
+
+test('new profile observed after last message appears in history without changing older chat', () => {
+  const rows=[{id:'last',room_id:'r',sent_at:'2026-10-02T13:00:00Z'}];
+  const snapshots=profiles.map(p=>({...p,name:p.id,room_id:'r'}));
+  const history=effectiveProfileHistory(rows,snapshots,[]);
+  assert.deepEqual(history.map(p=>p.id),['old','new']);
+  assert.equal(history.at(-1).name,'new');
+  assert.equal(messageProfile(rows[0],snapshots).id,'old');
+  const override={id:'manual',room_id:'r',from_sent_at:rows[0].sent_at,from_message_id:'last',from_body_index:0,
+    through_sent_at:rows[0].sent_at,through_message_id:'last',through_body_index:0,
+    created_at:'2026-10-04T00:00:00Z',name:'new',avatar_url:'new.jpg'};
+  assert.equal(messageProfile(rows[0],snapshots,[override]).avatar_url,'new.jpg');
+});
+
+test('stored profiles remain browsable when there are no archived messages yet', () => {
+  assert.deepEqual(effectiveProfileHistory([],profiles,[]).map(p=>p.id),['old','new']);
+});

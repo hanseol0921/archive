@@ -19,6 +19,8 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
   const drag = useRef(null);
   const [startId,setStartId] = useState(message?.id || '');
   const [endId,setEndId] = useState(message?.id || '');
+  const rangeStartId = startId || message?.id || rangeMessages.at(-1)?.id || '';
+  const rangeEndId = endId || message?.id || rangeMessages.at(-1)?.id || '';
   const close = useRef(null);
   const dialog = useRef(null);
   const p = enrichSharedProfile(history[index] || selected || {},history);
@@ -28,7 +30,7 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
     const keys = e => {
       if (e.key === 'Escape' && !busy) onClose();
       if (e.key === 'Tab') {
-        const controls = [...dialog.current.querySelectorAll('button:not(:disabled),input:not(:disabled),a[href]')];
+        const controls = [...dialog.current.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]')];
         const first = controls[0], last = controls.at(-1);
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
@@ -49,11 +51,11 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
     setName(history[next]?.name || room?.display_name || ''); setEmoji(history[next]?.status_emoji || '');
   }
   async function save() {
-    if (!message || !name.trim()) return;
+    if (!name.trim()) return;
     setBusy(true); setError('');
     try {
-      const start = rangeMessages.find(m=>m.id===startId);
-      const end = rangeMessages.find(m=>m.id===endId);
+      const start = rangeMessages.find(m=>m.id===rangeStartId);
+      const end = rangeMessages.find(m=>m.id===rangeEndId);
       if (!start || !end || rangeMessages.indexOf(start)>rangeMessages.indexOf(end)) throw new Error('시작과 끝 말풍선의 순서를 확인해 주세요.');
       // Fail before uploading if the one-time database setup has not been applied.
       const { error: check } = await supabase.from('dm_profile_overrides').select('from_sent_at').limit(0);
@@ -96,14 +98,14 @@ export default function DMProfileHistory({ history, selected, message, rangeMess
       <h2>{editing ? name : p.name || room?.display_name}</h2>
       <div className="dm-profile-emoji" style={{fontSize:Math.max(12,Math.min(36,72/Math.max(1,Array.from(editing ? emoji : p.status_emoji || '').length)))}}>{editing ? emoji : p.status_emoji || '—'}</div>
       <p className="dm-profile-date">{p.basis === 'manual' || p.through_message_id ? '직접 지정한 프로필' : p.observed_at ? `${new Date(p.observed_at).toLocaleString('ko-KR', {timeZone:'Asia/Seoul'})} 확인` : '변경 시각 미확인'}</p>
-      {isAdmin && message && !editing && <button className="dm-profile-edit-command" onClick={() => {setName(p.name || room?.display_name || '');setEmoji(p.status_emoji || '');setEditing(true);}}><Pencil size={16}/>프로필 적용 범위 설정</button>}
+      {isAdmin && rangeMessages.length > 0 && !editing && <button className="dm-profile-edit-command" onClick={() => {setName(p.name || room?.display_name || '');setEmoji(p.status_emoji || '');setEditing(true);}}><Pencil size={16}/>프로필 적용 범위 설정</button>}
       {editing && <form className="dm-profile-form" onSubmit={e => {e.preventDefault();save();}}>
         <label>사진<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={e => {setFile(e.target.files[0] || null);setCrop({x:50,y:50,scale:1});}}/></label>
         <label>확대<input type="range" min="1" max="3" step="0.01" value={crop.scale} disabled={busy} onChange={e=>setCrop({...crop,scale:Number(e.target.value)})}/></label>
         <label>이름<input value={name} maxLength={80} disabled={busy} required onChange={e=>setName(e.target.value)}/></label>
         <label>상태 이모지<input value={emoji} maxLength={32} disabled={busy} onChange={e=>setEmoji(e.target.value)}/></label>
-        <label>시작 말풍선<select value={startId} disabled={busy} onChange={e=>setStartId(e.target.value)}>{rangeMessages.map((m,i)=><option key={m.id} value={m.id}>{i+1}. {new Date(m.sent_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} · {m.blocks.map(b=>b.text || '').join('').slice(0,35) || '미디어'}</option>)}</select></label>
-        <label>끝 말풍선<select value={endId} disabled={busy} onChange={e=>setEndId(e.target.value)}>{rangeMessages.map((m,i)=><option key={m.id} value={m.id}>{i+1}. {new Date(m.sent_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} · {m.blocks.map(b=>b.text || '').join('').slice(0,35) || '미디어'}</option>)}</select></label>
+        <label>시작 말풍선<select value={rangeStartId} disabled={busy} onChange={e=>setStartId(e.target.value)}>{rangeMessages.map((m,i)=><option key={m.id} value={m.id}>{i+1}. {new Date(m.sent_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} · {m.blocks.map(b=>b.text || '').join('').slice(0,35) || '미디어'}</option>)}</select></label>
+        <label>끝 말풍선<select value={rangeEndId} disabled={busy} onChange={e=>setEndId(e.target.value)}>{rangeMessages.map((m,i)=><option key={m.id} value={m.id}>{i+1}. {new Date(m.sent_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} · {m.blocks.map(b=>b.text || '').join('').slice(0,35) || '미디어'}</option>)}</select></label>
         <button disabled={busy} type="submit"><Save size={16}/>{busy ? '저장 중' : '적용'}</button>
       </form>}
       {error && <p role="alert" className="dm-error">{error}</p>}

@@ -1,0 +1,11 @@
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import '/src/styles/DM.css';
+import Profile from '/src/DMProfileHistory.jsx';
+import {effectiveProfileHistory} from '/src/dmProfiles.js';
+const messages=['a','b','c'].map((id,i)=>({id,source_id:id,body_index:0,room_id:'r',sent_at:`2026-10-15T12:0${i}:00Z`,blocks:[{type:'text',text:'메시지 '+id}]}));
+const profiles=[{id:'old',room_id:'r',name:'이전 이름',avatar_url:'/profile-old.jpg',observed_at:'2026-10-14T00:00:00Z'},
+ {id:'new',room_id:'r',name:'새 이름',avatar_url:'/profile-new.jpg',status_emoji:'💙',observed_at:'2026-10-16T00:00:00Z'}];
+createRoot(document.getElementById('root')).render(React.createElement(Profile,{history:effectiveProfileHistory(messages,profiles,[]),selected:profiles[1],rangeMessages:messages,room:{id:'r',display_name:'새 이름'},isAdmin:true,onClose:()=>{},onSaved:()=>{}}));
+</script></body></html>

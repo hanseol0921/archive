@@ -48,5 +48,14 @@ export function effectiveProfileHistory(messages, profiles, overrides) {
     active.delete(key);
     active.set(key,{...p,id:p.id || key});
   }
+  // A newly observed profile can predate its first archived message. Keep it
+  // available for range selection without assigning it to older chats automatically.
+  const lastMessageAt = chronological.length ? Date.parse(chronological.at(-1).sent_at) : -Infinity;
+  for (const p of profileTimeline(profiles)) {
+    if (!p.avatar_url || !(Date.parse(p.observed_at) > lastMessageAt)) continue;
+    const key = JSON.stringify([profilePhotoKey(p.avatar_url),p.name || '',p.status_emoji || '']);
+    active.delete(key);
+    active.set(key,{...p,id:p.id || key,basis:'observed'});
+  }
   return [...active.values()];
 }
