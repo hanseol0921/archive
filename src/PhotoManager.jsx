@@ -3,6 +3,7 @@ import useDragSelection from "./useDragSelection";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import TagPicker from "./TagPicker";
+import ManagedImage from './ManagedImage';
 import { LazyVideoThumbnail } from "./ArchiveVideoPlayer";
 import { MEDIA_TYPES, VIDEO_TYPES, UNCLASSIFIED_TYPE, UNCLASSIFIED_FILTER } from "./mediaClassification";
 import { videoSourceTags, withVideoSourceTags } from "./videoClassification";
@@ -173,7 +174,7 @@ export default function PhotoManager({ unclassified = false }) {
             return <article className={`archive-import-media ${selected.includes(row.id) ? "is-selected" : ""}`} key={row.id} data-drag-select-id={row.id}>
               <div className="photo-manager-card-heading"><label className="photo-manager-card-select" title="일괄 편집 대상으로 선택"><input type="checkbox" aria-label={`${row.date} ${index + 1}번 ${label} 편집 선택`} disabled={busy} checked={selected.includes(row.id)} onChange={() => toggle([row.id])} /></label></div>
               <button type="button" className="archive-import-media-preview photo-preview-button" aria-label={`${index + 1}번 ${label} 크게 보기`} onClick={() => setPreview(row)}>
-                {row.thumbnail_url || row.image_url ? <img src={row.thumbnail_url || row.image_url} alt="" loading="lazy" decoding="async" style={{ objectPosition: row.crop_position || "50% 50%" }} /> : !photo && row.video_url ? <LazyVideoThumbnail src={row.video_url} time={row.thumbnail_time} onLoadedMetadata={(video, time) => { video.currentTime = Math.min(Math.max(0.1, Number(time) || 0), Number.isFinite(video.duration) ? video.duration / 2 : 0.1); video.pause(); }} /> : <span className="media-manager-video-placeholder">▶ 동영상 재생</span>}
+                {row.thumbnail_url || row.image_url ? <ManagedImage key={`${row.thumbnail_url}:${row.image_url}`} src={row.thumbnail_url || row.image_url} originalSrc={row.image_url} alt="" loading="lazy" decoding="async" style={{ objectPosition: row.crop_position || "50% 50%" }} /> : !photo && row.video_url ? <LazyVideoThumbnail src={row.video_url} time={row.thumbnail_time} onLoadedMetadata={(video, time) => { video.currentTime = Math.min(Math.max(0.1, Number(time) || 0), Number.isFinite(video.duration) ? video.duration / 2 : 0.1); video.pause(); }} /> : <span className="media-manager-video-placeholder">▶ 동영상 재생</span>}
                 <span>{photo ? "크게 보기" : "▶ 동영상 재생"}</span>
               </button>
               <small className="media-manager-source">{label} · {videoSourceTags(row).join(" · ") || "포스트"}</small>
@@ -194,6 +195,6 @@ export default function PhotoManager({ unclassified = false }) {
     </section>
     {selectionOverlay}
     {preview && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label="자료 미리보기" onMouseDown={() => setPreview(null)}><button type="button" className="photo-lightbox-close" aria-label="미리보기 닫기" onClick={() => setPreview(null)}>×</button>
-      {preview.table === "photos" ? <img src={preview.image_url} alt="사진 미리보기" onMouseDown={(event) => event.stopPropagation()} /> : <video key={preview.id} src={preview.video_url} poster={preview.thumbnail_url || undefined} controls playsInline preload="metadata" onMouseDown={(event) => event.stopPropagation()} />}</div>}
+      {preview.table === "photos" ? <ManagedImage key={preview.image_url} src={preview.image_url} alt="사진 미리보기" onMouseDown={(event) => event.stopPropagation()} /> : <video key={preview.id} src={preview.video_url} poster={preview.thumbnail_url || undefined} controls playsInline preload="metadata" onMouseDown={(event) => event.stopPropagation()} />}</div>}
   </main>;
 }
