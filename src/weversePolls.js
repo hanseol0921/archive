@@ -11,3 +11,17 @@ export function mergePollSnapshots(existing = [], incoming = []) {
   });
   return [...merged, ...pending.values()];
 }
+
+function pollValue(value) {
+  if (Array.isArray(value)) return value.map(pollValue);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value)
+    .filter(key => key !== 'captured_at').sort().map(key => [key, pollValue(value[key])]));
+  return value;
+}
+
+export function hasPollUpdates(existing = [], incoming = []) {
+  const before = (Array.isArray(existing) ? existing : []).filter(block => block.type === 'poll');
+  const after = mergePollSnapshots(existing, incoming).filter(block => block.type === 'poll');
+  // Re-collecting an identical result is not a content update, even after the deadline.
+  return JSON.stringify(pollValue(before)) !== JSON.stringify(pollValue(after));
+}

@@ -96,3 +96,8 @@
     display: none;
   }
 }
+.settings-tab-order { display: flex; gap: 4px; flex: 0 0 auto; }
+.settings-tab-order button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid #ddd; border-radius: 4px; background: #fff; color: #666; cursor: pointer; }
+.settings-tab-order button:disabled { opacity: .3; cursor: default; }
+.settings-tab-order button:focus-visible { outline: 2px solid var(--archive-accent-text); outline-offset: 2px; }
+.settings-tab-row .settings-tab-admin-only { width: 112px; }

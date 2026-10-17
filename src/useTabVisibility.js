@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
+import { normalizeTabOrder } from './tabOrder';
 
 export const ARCHIVE_TABS = [
   ["home", "홈"], ["photos", "사진"], ["videos", "동영상"],
@@ -20,6 +21,7 @@ function read() {
       const saved = data ? JSON.parse(data.value) : {};
       const next = { ...DEFAULTS };
       for (const [key] of ARCHIVE_TABS) if (typeof saved[key] === "boolean") next[key] = saved[key];
+      next.__order = normalizeTabOrder(saved.__order);
       publish(next);
     }).finally(() => { pending = null; });
   return pending;
@@ -34,16 +36,20 @@ export default function useTabVisibility() {
     read().catch(() => { if (active) setError("탭 공개 설정을 불러오지 못했습니다."); });
     return () => { active = false; listeners.delete(setAllowed); };
   }, []);
-  async function change(key, enabled) {
-    if (!allowed || saving || !ARCHIVE_TABS.some(([id]) => id === key)) return;
+  async function save(next) {
+    if (!allowed || saving) return;
     setSaving(true); setError("");
     try {
-      const next = { ...allowed, [key]: enabled };
       const { error: writeError } = await supabase.from("site_settings").upsert({ key: KEY, value: JSON.stringify(next), updated_at: new Date().toISOString() }, { onConflict: "key" });
       if (writeError) throw writeError;
       publish(next);
     } catch { setError("탭 공개 설정을 저장하지 못했습니다."); }
     finally { setSaving(false); }
   }
-  return { allowed, ready: Boolean(allowed), error, saving, change };
+  function change(key, enabled) {
+    if (!ARCHIVE_TABS.some(([id]) => id === key)) return;
+    return save({ ...allowed, [key]: enabled });
+  }
+  function changeOrder(order) { return save({ ...allowed, __order: normalizeTabOrder(order) }); }
+  return { allowed, order: normalizeTabOrder(allowed?.__order), ready: Boolean(allowed), error, saving, change, changeOrder };
 }

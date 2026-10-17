@@ -3,6 +3,7 @@ import { uploadToR2 } from './r2Storage';
 import { dmStorageKey } from './dmStorageKey';
 import { loadStoredDMState } from './dmStoredFiles';
 import {sharedProfileAssets,profileAssetCache} from './artistProfileAssets';
+import {sameDMMessage, sameDMProfile} from './dmImportDelta';
 
 export function validateDMArchive(value) {
   if (value?.format !== 'weverse-dm-archive' || value.version !== 1 || !value.room?.id
@@ -73,15 +74,20 @@ export async function importDMArchive(archive, files, progress) {
   const uploaded = new Map();
   const profileFiles=new Set([...archive.profiles.flatMap(p=>[p.avatar_file,p.official_avatar_file]),...archive.messages.map(m=>m.avatar_file)].filter(Boolean));
   const sharedFiles=profileAssetCache(await sharedProfileAssets());
-  const {files:storedFiles,messageIds:existingMessages} = await loadStoredDMState(supabase, archive.room.id);
-  const stats={newMessages:0,existingMessages:0,uploadedFiles:0,reusedFiles:0};
+  const {files:storedFiles,messageIds:existingMessages,messages:storedMessages,profiles:storedProfiles} = await loadStoredDMState(supabase, archive.room.id);
+  const stats={newMessages:0,existingMessages:archive.messages.filter(m=>existingMessages.has(m.id)).length,updatedMessages:0,skippedMessages:0,uploadedFiles:0,reusedFiles:0};
   async function media(path, expectedHash) {
     if (uploaded.has(path)) return uploaded.get(path);
     const file = localFile(files, path);
+    const extension = path.split('.').pop().toLowerCase();
+    // A trusted stored content-addressed URL already proves the original exists.
+    // Only new/changed originals need to be read into memory and hashed again.
+    const reusable = expectedHash ? (profileFiles.has(path) ? sharedFiles.get(expectedHash) : null)
+      || storedFiles.get(`${expectedHash}.${extension}`) : null;
+    if (reusable) { stats.reusedFiles++; uploaded.set(path,reusable); return reusable; }
     const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer())))
       .map(x => x.toString(16).padStart(2, '0')).join('');
     if (expectedHash && digest !== expectedHash) throw new Error(`파일 무결성 오류: ${path}`);
-    const extension = path.split('.').pop().toLowerCase();
     if (!['jpg','jpeg','png','gif','webp','mp4'].includes(extension)) throw new Error('지원하지 않는 미디어 파일입니다.');
     const type = extension === 'mp4' ? 'video/mp4' : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
     if(profileFiles.has(path) && sharedFiles.has(digest)) {
@@ -112,9 +118,9 @@ export async function importDMArchive(archive, files, progress) {
     avatar_url: p.avatar_file ? await media(p.avatar_file) : null,
     official_avatar_url: p.official_avatar_file ? await media(p.official_avatar_file) : null,
   });
-  for (let offset = 0; offset < archive.messages.length || offset === 0; offset += 100) {
-    const messages = [];
-    for (const m of archive.messages.slice(offset, offset + 100)) {
+  const changedProfiles = profiles.filter(p=>!sameDMProfile(p,storedProfiles.get(p.id)));
+  const pending = [];
+  for (const m of archive.messages) {
       const blocks = [];
       for (const b of m.blocks) {
         const block = { type: b.type, gift: !!b.gift, gift_code: b.gift_code || null };
@@ -134,9 +140,15 @@ export async function importDMArchive(archive, files, progress) {
         : snapshotIndex >= 0 ? profiles[snapshotIndex].avatar_url : null;
       if (avatarUrl) blocks.push({ type: 'profile', avatar_url: avatarUrl,
         observed_at: m.profile_observed_at || archive.captured_at, basis: 'message_response' });
-      messages.push({ id: m.id, room_id: m.room_id, sent_at: m.sent_at, sender_type: 'ARTIST',
-        text: m.text, blocks, deleted: !!m.deleted });
-    }
+      const message = { id: m.id, room_id: m.room_id, sent_at: m.sent_at, sender_type: 'ARTIST',
+        text: m.text, blocks, deleted: !!m.deleted };
+      if (sameDMMessage(message,storedMessages.get(m.id))) stats.skippedMessages++;
+      else pending.push(message);
+  }
+  progress(0,pending.length);
+  if (!pending.length && !changedProfiles.length) return stats;
+  for (let offset = 0; offset < pending.length || offset === 0; offset += 100) {
+    const messages = pending.slice(offset,offset+100);
     const incoming = { photos: [], videos: [] };
     for (const message of messages) for (const block of message.blocks) {
       if (block.type === 'photo') incoming.photos.push(block.asset_id);
@@ -144,7 +156,7 @@ export async function importDMArchive(archive, files, progress) {
     }
     const { error } = await supabase.rpc('import_weverse_dm', {
       p_room: room,
-      p_messages: messages, p_profiles: profiles,
+      p_messages: messages, p_profiles: offset === 0 ? changedProfiles : [],
     });
     if (error) throw new Error(`${error.message} (DB: scripts/weverse-dm.sql)`);
     if (messages.length) {
@@ -155,7 +167,7 @@ export async function importDMArchive(archive, files, progress) {
       const missing=messages.filter(m=>!savedIds.has(m.id));
       if(missing.length) throw new Error(`DB 요청 후에도 메시지 ${missing.length}개가 확인되지 않습니다. DM 저장 함수와 접근 권한을 확인해 주세요.`);
       for(const m of messages) {
-        if(existingMessages.has(m.id)) stats.existingMessages++;
+        if(existingMessages.has(m.id)) stats.updatedMessages++;
         else stats.newMessages++;
       }
     }
@@ -164,8 +176,8 @@ export async function importDMArchive(archive, files, progress) {
       const { error } = await supabase.from(table).update({ type: '' }).in('dm_asset_id', incoming[table].slice(index, index + 100)).eq('type', 'DM');
       if (error) throw new Error(`DM 자료는 가져왔지만 유형 초기화에 실패했습니다. ${error.message}`);
     }
-    progress(Math.min(offset + 100, archive.messages.length), archive.messages.length);
-    if (!archive.messages.length) break;
+    progress(Math.min(offset + 100, pending.length), pending.length);
+    if (!pending.length) break;
   }
   return stats;
 }

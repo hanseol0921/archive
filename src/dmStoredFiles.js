@@ -24,17 +24,22 @@ export function rememberDMFiles(rows, roomId, files = new Map()) {
 export async function loadStoredDMState(client, roomId) {
   const files = new Map();
   const messageIds = new Set();
-  for (const [table, fields] of [['dm_messages','id,blocks'], ['dm_profiles','avatar_url,official_avatar_url']]) {
+  const messages = new Map();
+  const profiles = new Map();
+  for (const [table, fields] of [['dm_messages','id,room_id,sent_at,sender_type,text,blocks,deleted'], ['dm_profiles','id,observed_at,name,official_name,status_emoji,avatar_url,official_avatar_url']]) {
     for (let offset = 0; ; offset += 500) {
       const {data,error} = await client.from(table).select(fields).eq('room_id',roomId)
         .order('id').range(offset,offset+499);
       if (error) throw new Error(`기존 DM 파일 확인 실패: ${error.message}`);
       rememberDMFiles(data || [], roomId, files);
-      if (table === 'dm_messages') for (const row of data || []) if (row.id) messageIds.add(row.id);
+      for (const row of data || []) if (row.id) {
+        if (table === 'dm_messages') { messageIds.add(row.id); messages.set(row.id,row); }
+        else profiles.set(row.id,row);
+      }
       if (!data || data.length < 500) break;
     }
   }
-  return { files, messageIds };
+  return { files, messageIds, messages, profiles };
 }
 
 export async function loadStoredDMFiles(client,roomId) {

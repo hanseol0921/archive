@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="UTF-8"></head><body><script type="module">
+import {importDMArchive} from '/src/dmArchiveImport.js';
+window.runDeltaImport=async(messages)=>{
+ const archive={format:'weverse-dm-archive',version:1,room:{id:'WRBQM41',artist_name:'artist',display_name:'nickname'},media_complete:true,captured_at:'2026-10-17T00:00:00Z',messages,profiles:[]};
+ const file=new File(['not read again'],'cached.jpg');
+ file.arrayBuffer=()=>{throw Error('Cached original must not be read/hashed again');};
+ const progress=[];
+ const result=await importDMArchive(archive,new Map([['media/photo/cached.jpg',file]]),(n,total)=>progress.push([n,total]));
+ return {result,progress};
+};
+</script></body></html>

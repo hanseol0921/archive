@@ -22,8 +22,8 @@ export default function DMImport() {
     setBusy(true);
     setStatus('기존 자료 확인 중');
     try {
-      const result=await importDMArchive(selection.archive, selection.files, (n, total) => setStatus(`${n} / ${total}`));
-      setStatus(`가져오기 완료 · 새 메시지 ${result.newMessages}개 · 기존 메시지 ${result.existingMessages}개 · 새 파일 ${result.uploadedFiles}개 · 파일 재사용 ${result.reusedFiles}개`);
+      const result=await importDMArchive(selection.archive, selection.files, (n, total) => setStatus(total ? `새 메시지·변경분 저장 ${n} / ${total}` : '새 프로필 확인 중'));
+      setStatus(`가져오기 완료 · 새 메시지 ${result.newMessages}개 · 수정 ${result.updatedMessages}개 · 변경 없는 메시지 ${result.skippedMessages}개 건너뜀 · 새 파일 ${result.uploadedFiles}개 · 파일 재사용 ${result.reusedFiles}개`);
     } catch (error) { setStatus(`중단: ${error.message}`); }
     finally { setBusy(false); }
   }

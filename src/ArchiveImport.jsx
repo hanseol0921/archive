@@ -12,6 +12,7 @@ import "./styles/ImportEditor.css";
 import { MEDIA_TYPES, VIDEO_TYPES, UNCLASSIFIED_TYPE } from "./mediaClassification";
 import TagPicker from "./TagPicker";
 import WeversePoll from "./WeversePoll";
+import { hasPollUpdates, mergePollSnapshots } from './weversePolls';
 import { mapConcurrent } from "./concurrentTasks";
 import { createLocalVideoThumbnail } from "./videoThumbnail";
 import { deleteFromR2, uploadToR2 } from "./r2Storage";
@@ -236,12 +237,14 @@ function ArchiveImport() {
     let exactMetadataBody = "";
     let metadataDate = "";
     let metadataUrl = "";
+    let metadataAuthor = '';
     let contentBlocks = [];
 
     try {
       const pdfMetadata = await pdf.getMetadata();
       const info = pdfMetadata?.info || {};
       const custom = info?.Custom || info?.custom || {};
+      metadataAuthor = String(readRawPdfInfoString(pdfBytes, 'WeverseAuthor') || custom.WeverseAuthor || info.WeverseAuthor || '');
 
       exactMetadataBody = String(
         rawMetadataBody ||
@@ -422,10 +425,11 @@ function ArchiveImport() {
           .filter((value, index) => index === 2 || Boolean(value))
           .join("\n"),
         contentBlocks,
+        author: metadataAuthor,
       };
     }
 
-    return { text: extractedText, contentBlocks };
+    return { text: extractedText, contentBlocks, author: metadataAuthor };
   }
 
   // =========================
@@ -623,6 +627,7 @@ function ArchiveImport() {
 
         metadata = parsePdfMetadata(pdfText, fallbackDate);
         metadata.contentBlocks = pdfResult.contentBlocks;
+        metadata.author = pdfResult.author;
       } catch (error) {
         console.error(`${folderPath} PDF 읽기 실패`, error);
       }
@@ -774,7 +779,7 @@ function ArchiveImport() {
 
       postTime: metadata.time,
 
-      postAuthor: "리우",
+      postAuthor: metadata.author || '',
 
       postContent: metadata.contentBlocks?.some(block => block.type === "poll")
         ? metadata.contentBlocks.filter(block => block.type === "text").map(block => block.content || "").join("\n\n")
@@ -872,30 +877,26 @@ function ArchiveImport() {
       const newDrafts = [];
       let skippedDuplicateCount = 0;
 
-      // 이미 DB에 등록된 Weverse 원본 링크를 한 번만 가져온다.
-      // 각 폴더마다 DB를 다시 조회하지 않아도 되도록 Set으로 보관한다.
-      const { data: existingPostRows, error: existingPostError } =
-        await supabase
-          .from("weverse_posts")
-          .select("weverse_url")
-          .not("weverse_url", "is", null);
-
-      if (existingPostError) {
-        throw existingPostError;
+      // Compare stored poll snapshots as well as URLs. Paginate so older posts are not missed.
+      const existingPosts = new Map();
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await supabase.from('weverse_posts')
+          .select('weverse_url,content_blocks').not('weverse_url', 'is', null)
+          .order('id').range(offset, offset + 499);
+        if (error) throw error;
+        for (const row of data || []) {
+          const url = String(row.weverse_url || '').trim();
+          if (url) existingPosts.set(url, row.content_blocks || []);
+        }
+        if (!data || data.length < 500) break;
       }
-
-      const existingPostUrls = new Set(
-        (existingPostRows || [])
-          .map((row) => String(row.weverse_url || "").trim())
-          .filter(Boolean),
-      );
 
       for (const group of selectedGroups) {
         const draft = await createDraft(group);
 
         const draftUrl = String(draft.postWeverseUrl || "").trim();
 
-        if (draftUrl && existingPostUrls.has(draftUrl) && !draft.contentBlocks.some(block => block.type === 'poll')) {
+        if (draftUrl && existingPosts.has(draftUrl) && !hasPollUpdates(existingPosts.get(draftUrl), draft.contentBlocks)) {
           skippedDuplicateCount++;
 
           // createDraft에서 만든 미리보기 Object URL도 정리
@@ -914,7 +915,7 @@ function ArchiveImport() {
 
         // 같은 선택 묶음 안에 동일 URL이 두 번 들어온 경우도 제외
         if (draftUrl) {
-          existingPostUrls.add(draftUrl);
+          existingPosts.set(draftUrl, mergePollSnapshots(existingPosts.get(draftUrl), draft.contentBlocks));
         }
 
         newDrafts.push(draft);
@@ -1242,7 +1243,6 @@ function ArchiveImport() {
             if ((existingPhotos || []).length !== draft.media.filter(item => item.kind === 'photo').length) {
               throw new Error('기존 게시글의 사진 수가 투표 PDF와 다릅니다. 사진 누락을 먼저 복구한 뒤 다시 가져와 주세요.');
             }
-            const {mergePollSnapshots} = await import('./weversePolls');
             const previousBlocks = existingPost.content_blocks?.length ? existingPost.content_blocks : [
               ...(existingPost.content ? [{type: 'text', content: existingPost.content}] : []),
               ...draft.contentBlocks.filter(block => ['photo', 'video'].includes(block.type)),

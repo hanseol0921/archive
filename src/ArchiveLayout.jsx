@@ -1371,75 +1371,20 @@ function ArchiveLayout({
             ========================= */}
 
             <div className="archive-side-tabs">
-              {tabShown("home") && <button
-                type="button"
-                className={`archive-side-tab ${activeTab === "home" ? "active" : ""}`}
-                onClick={goHome}
-              >
-                홈
-              </button>}
-
-              {tabShown("photos") && <button
-                type="button"
-                className={`archive-side-tab ${
-                  activeTab === "photos" ? "active" : ""
-                }`}
-                onClick={goPhotos}
-              >
-                사진
-              </button>}
-
-              {tabShown("videos") && <button
-                type="button"
-                className={`archive-side-tab ${
-                  activeTab === "videos" ? "active" : ""
-                }`}
-                onClick={goVideos}
-              >
-                동영상
-              </button>}
-
-              {tabShown('dm') && <button type="button" className={`archive-side-tab ${activeTab === 'dm' ? 'active' : ''}`}
-                onClick={() => navigateInsideArchive(isAdmin ? '/admin/dm' : '/dm')}>DM</button>}
-
-              {tabShown('comments') && <button type="button" className={`archive-side-tab ${activeTab === 'comments' ? 'active' : ''}`}
-                onClick={()=>navigateInsideArchive(isAdmin?'/admin/comments':'/comments')}>댓글</button>}
-              {tabShown('statistics') && <button type="button" className={`archive-side-tab ${activeTab === 'statistics' ? 'active' : ''}`}
-                onClick={()=>navigateInsideArchive(isAdmin?'/admin/statistics':'/statistics')}>통계</button>}
-
-              {tabShown("diary") && <button
-                type="button"
-                className={`archive-side-tab ${
-                  activeTab === "diary" ? "active" : ""
-                }`}
-                onClick={() => { if (activeTab === "diary" && onActiveTabClick) onActiveTabClick(); else goDiary(); }}
-              >
-                다이어리
-              </button>}
-
-              {tabShown("guestbook") && <button
-                type="button"
-                className={`archive-side-tab ${
-                  activeTab === "guestbook" ? "active" : ""
-                }`}
-                onClick={goGuestbook}
-              >
-                방명록
-              </button>}
-
-              {tabShown("posts") && (
-                <button
-                  type="button"
-                  className={`archive-side-tab ${
-                    activeTab === "posts" ? "active" : ""
-                  }`}
-                  onClick={goPosts}
-                >
-                  게시글
-                </button>
-              )}
-
-              {isAdmin && <button type="button" className={`archive-side-tab ${activeTab === "settings" ? "active" : ""}`} onClick={() => navigateInsideArchive("/admin/settings")}>설정</button>}
+              {(tabVisibility.ready || (isAdmin && tabVisibility.error)) && tabVisibility.order
+                .filter(id => id === 'settings' ? isAdmin : tabShown(id)).map(id => {
+                  const tabs = {
+                    home: ['홈', goHome], photos: ['사진', goPhotos], videos: ['동영상', goVideos],
+                    dm: ['DM', () => navigateInsideArchive(isAdmin ? '/admin/dm' : '/dm')],
+                    comments: ['댓글', () => navigateInsideArchive(isAdmin ? '/admin/comments' : '/comments')],
+                    statistics: ['통계', () => navigateInsideArchive(isAdmin ? '/admin/statistics' : '/statistics')],
+                    diary: ['다이어리', () => { if (activeTab === 'diary' && onActiveTabClick) onActiveTabClick(); else goDiary(); }],
+                    guestbook: ['방명록', goGuestbook], posts: ['게시글', goPosts],
+                    settings: ['설정', () => navigateInsideArchive('/admin/settings')],
+                  };
+                  const [label, onClick] = tabs[id];
+                  return <button key={id} type="button" className={`archive-side-tab ${activeTab === id ? 'active' : ''}`} onClick={onClick}>{label}</button>;
+                })}
 
               <div className="mobile-tab-search">
                 <span>⌕</span>

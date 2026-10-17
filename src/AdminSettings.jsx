@@ -1,10 +1,12 @@
 import useTabVisibility, { ARCHIVE_TABS } from "./useTabVisibility";
 import { useState } from "react";
+import { ArrowUp, ArrowDown } from 'lucide-react';
+import { moveTab } from './tabOrder';
 import ArchiveLayout from "./ArchiveLayout";
 import "./styles/AdminSettings.css";
 
 const groups = [
-  { id: "tabs", name: "탭 공개 설정", links: [] },
+  { id: "tabs", name: "탭 설정", links: [] },
   { id: "media", name: "자료 관리", links: [
     ["업로드 사진·동영상 관리", "사진과 동영상 정보를 일괄 편집합니다.", "/admin/photos/manage"],
     ["미분류 자료 관리", "분류가 필요한 자료를 모아서 편집합니다.", "/admin/media/unclassified"],
@@ -26,6 +28,23 @@ export default function AdminSettings() {
   const sidebar = <nav className="settings-menu" aria-label="관리자 설정 메뉴"><h2>설정</h2>{groups.map((group) => <button type="button" key={group.id} aria-pressed={section === group.id} onClick={() => setSection(group.id)}>{group.name}</button>)}</nav>;
   return <ArchiveLayout isAdmin activeTab="settings" sidebarContent={sidebar}>
     <div className="settings-mobile-menu">{sidebar}</div>
-    <section className="settings-content"><h1>{current.name}</h1>{section === "tabs" ? <div className="settings-tab-visibility"><p>방문자 화면에 표시할 탭을 설정합니다. 관리자 화면에는 모든 탭이 표시됩니다.</p>{visibility.error && <p role="alert">{visibility.error}</p>}{ARCHIVE_TABS.map(([key, name]) => <div className="settings-tab-row" key={key}><span>{name}</span><small>{visibility.allowed?.[key] ? "활성화" : "비활성화"}</small><button type="button" className="settings-tab-switch" role="switch" aria-checked={visibility.allowed?.[key] === true} aria-label={`${name} 방문자 탭 표시`} disabled={!visibility.ready || visibility.saving} onClick={() => visibility.change(key, visibility.allowed?.[key] !== true)}><span aria-hidden="true" /></button></div>)}</div> : <div className="settings-links">{current.links.map(([title, description, url]) => <a href={url} key={url}><div><strong>{title}</strong><p>{description}</p></div><span aria-hidden="true">›</span></a>)}</div>}</section>
+    <section className="settings-content"><h1>{current.name}</h1>{section === "tabs" ? <div className="settings-tab-visibility">
+      <p>화살표로 탭 순서를 바꾸면 자동 저장되어 관리자·방문자 화면에 함께 반영됩니다. 스위치는 방문자에게 탭을 표시할지 설정합니다.</p>
+      {visibility.error && <p role="alert">{visibility.error}</p>}
+      {visibility.saving && <p role="status">저장 중…</p>}
+      {visibility.order.map((key, index) => {
+        const name = ARCHIVE_TABS.find(([id]) => id === key)?.[1] || '설정';
+        const disabled = !visibility.ready || visibility.saving;
+        return <div className="settings-tab-row" key={key}>
+          <div className="settings-tab-order"><button type="button" aria-label={`${name} 탭 위로 이동`} title="위로 이동" disabled={disabled || index === 0} onClick={() => visibility.changeOrder(moveTab(visibility.order, key, -1))}><ArrowUp size={16} /></button>
+            <button type="button" aria-label={`${name} 탭 아래로 이동`} title="아래로 이동" disabled={disabled || index === visibility.order.length - 1} onClick={() => visibility.changeOrder(moveTab(visibility.order, key, 1))}><ArrowDown size={16} /></button></div>
+          <span>{name}</span>
+          {key === 'settings' ? <small className="settings-tab-admin-only">관리자 전용</small> : <>
+            <small>{visibility.allowed?.[key] ? '활성화' : '비활성화'}</small>
+            <button type="button" className="settings-tab-switch" role="switch" aria-checked={visibility.allowed?.[key] === true} aria-label={`${name} 방문자 탭 표시`} disabled={disabled} onClick={() => visibility.change(key, visibility.allowed?.[key] !== true)}><span aria-hidden="true" /></button>
+          </>}
+        </div>;
+      })}
+    </div> : <div className="settings-links">{current.links.map(([title, description, url]) => <a href={url} key={url}><div><strong>{title}</strong><p>{description}</p></div><span aria-hidden="true">›</span></a>)}</div>}</section>
   </ArchiveLayout>;
 }
