@@ -217,3 +217,8 @@
     max-height: 45dvh;
   }
 }
+
+.photo-detail-metadata { display:flex; flex-wrap:wrap; gap:8px 24px; margin:10px 0 0; text-align:left; }
+.photo-detail-metadata > div { display:flex; align-items:baseline; gap:8px; min-width:0; }
+.photo-detail-metadata dt { margin:0; color:#888; font-size:12px; line-height:1.6; }
+.photo-detail-metadata dd { margin:0; color:#55514a; font-size:14px; line-height:1.6; overflow-wrap:anywhere; }

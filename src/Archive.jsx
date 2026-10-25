@@ -1669,12 +1669,6 @@ const hairColorAliases = {
               <button
                 type="button"
                 className="modal-image photo-detail-image"
-                style={selectedPhoto.thumbnail_url ? {
-                  backgroundImage: `url(${JSON.stringify(selectedPhoto.thumbnail_url)})`,
-                  backgroundSize: "contain",
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
-                } : undefined}
                 aria-label="사진 원본 확대 보기"
                 onClick={() => setZoomedPhoto(true)}
               >
@@ -1693,6 +1687,12 @@ const hairColorAliases = {
               {!editMode ? (
                 <>
                   <div className="modal-date">{selectedPhoto.date}</div>
+                  {(!isUnclassifiedType(selectedPhoto.type) || selectedPhoto.hair_color?.trim()) && (
+                    <dl className="photo-detail-metadata">
+                      {!isUnclassifiedType(selectedPhoto.type) && <div><dt>사진 유형</dt><dd>{selectedPhoto.type}</dd></div>}
+                      {selectedPhoto.hair_color?.trim() && <div><dt>머리색</dt><dd>{selectedPhoto.hair_color}</dd></div>}
+                    </dl>
+                  )}
                   {selectedPhoto.tags?.length > 0 && (
                     <>
                       <div
