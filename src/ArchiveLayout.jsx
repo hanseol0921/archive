@@ -665,10 +665,39 @@ function ArchiveLayout({
 }) {
   const pageRef = useRef(null);
   const mobileTabsRef = useRef(null);
+  const [mobileGnbVisible, setMobileGnbVisible] = useState(false);
+  const [mobileTabsHeight, setMobileTabsHeight] = useState(36);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let distance = 0;
+    const scrollPositions = new WeakMap();
+    const onScroll = event => {
+      if (!window.matchMedia('(max-width: 800px)').matches) return;
+      const target = event.target;
+      const pageScroll = target === document || target === window;
+      const y = pageScroll ? Math.max(0, window.scrollY) : target.scrollTop;
+      if (!Number.isFinite(y)) return;
+      const previous = pageScroll ? lastY : (scrollPositions.get(target) ?? y);
+      if (pageScroll) lastY = y;
+      else scrollPositions.set(target, y);
+      const delta = y - previous;
+      if (!delta) return;
+      distance = Math.sign(distance) === Math.sign(delta) ? distance + delta : delta;
+      if (Math.abs(distance) < 8) return;
+      setMobileGnbVisible(delta > 0);
+      if (delta < 0) {
+        setMobileSearchOpen(false);
+        if (mobileMoreRef.current) mobileMoreRef.current.open = false;
+      }
+      distance = 0;
+    };
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    return () => document.removeEventListener('scroll', onScroll, true);
+  }, []);
   useEffect(() => {
     const tabs = mobileTabsRef.current;
     if (!tabs) return;
-    const observer = new ResizeObserver(() => { tabs.parentElement?.style.setProperty("--mobile-tabs-height", `${tabs.getBoundingClientRect().height}px`); });
+    const observer = new ResizeObserver(() => { const height = tabs.getBoundingClientRect().height; setMobileTabsHeight(height); tabs.parentElement?.style.setProperty("--mobile-tabs-height", `${height}px`); });
     observer.observe(tabs);
     return () => observer.disconnect();
   }, []);
@@ -1177,7 +1206,7 @@ function ArchiveLayout({
             공통 상단
         ========================= */}
 
-        {createPortal(<header className="archive-global-toolbar">
+        {createPortal(<header className={`archive-global-toolbar ${mobileGnbVisible ? "is-mobile-visible" : ""}`} style={{ "--mobile-tabs-height": `${mobileTabsHeight}px` }}>
           <button type="button" className="mobile-gnb-title" onClick={() => {
             if (isAdmin && siteCopyLoaded) { setSiteCopyDraft(siteCopy); setSiteCopyEditorOpen(true); }
             else goHome();
