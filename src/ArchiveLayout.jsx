@@ -1,4 +1,5 @@
 import useTabVisibility from "./useTabVisibility";
+import { signOutToPage } from "./authNavigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabaseClient";
@@ -1185,10 +1186,11 @@ function ArchiveLayout({
               <button
                 type="button"
                 className="logout-button"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-
-                  window.location.href = "/";
+                onClick={async (event) => {
+                  const button = event.currentTarget;
+                  button.disabled = true;
+                  try { await signOutToPage(supabase.auth, url => window.location.replace(url)); }
+                  catch { alert('로그아웃하지 못했습니다. 다시 시도해주세요.'); button.disabled = false; }
                 }}
               >
                 로그아웃

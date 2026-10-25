@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { isArchiveAdmin } from "./adminAccess";
+import { isSigningOut } from "./authNavigation";
 import AdminHome from "./AdminHome";
 import Admin from "./Admin";
 import Videos from "./Videos";
@@ -45,7 +46,7 @@ function AdminRoute() {
   }, []);
 
   useEffect(() => {
-    if (!loading && !session) window.location.assign("/login");
+    if (!loading && !session && !isSigningOut()) window.location.assign("/login");
   }, [loading, session]);
 
   if (loading) return null;

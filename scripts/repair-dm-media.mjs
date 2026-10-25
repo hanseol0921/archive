@@ -2,12 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { S3Client, ListObjectsV2Command, PutObjectCommand, CopyObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { normalizeR2Endpoint } from '../server/r2-endpoint.js';
 import { dmStorageKey } from '../src/dmStorageKey.js';
 
 const bucket = process.env.R2_BUCKET;
-const root = path.resolve('../weverse_archive/backups/dm/리우');
+const root = path.resolve(fileURLToPath(new URL('../../Scraper/backups/dm/리우/', import.meta.url)));
 const apply = process.argv.includes('--apply');
 const client = new S3Client({ region: 'auto', endpoint: normalizeR2Endpoint(process.env.R2_ENDPOINT, bucket),
   credentials: { accessKeyId: process.env.R2_ACCESS_KEY_ID, secretAccessKey: process.env.R2_SECRET_ACCESS_KEY },

@@ -1,0 +1,8 @@
+.logout-page { display:flex; align-items:center; justify-content:center; min-height:100dvh; padding:24px; background:#f7f7f7; color:#555; }
+.logout-card { width:100%; max-width:400px; padding:40px 28px; border:1px solid #e1e1e1; border-radius:12px; background:#fff; text-align:center; }
+.logout-card > svg { color:var(--archive-accent, #81bfb9); }
+.logout-card h1 { margin:20px 0 12px; font-size:20px; font-weight:600; }
+.logout-card p { margin:0 0 28px; font-size:14px; line-height:1.7; }
+.logout-home-link { display:block; padding:12px; border-radius:6px; background:var(--archive-accent, #81bfb9); color:#fff; font-size:14px; text-decoration:none; }
+.logout-login-link { display:inline-block; margin-top:20px; color:#777; font-size:13px; }
+.logout-card a:focus-visible { outline:2px solid #555; outline-offset:3px; }

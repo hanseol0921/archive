@@ -39,3 +39,15 @@ test("food/scenery conversion leaves dogs and DM unchanged", () => {
 });
 
 test("meme photos stay hidden regardless of extra selection", () => { assert.equal(isPhotoVisible({type:"짤",archive_visible:true,tags:["음식"]},{food:true},{food:true}),false); });
+
+
+test('published DM portraits appear without requiring a visitor DM checkbox, while hidden media stay hidden', () => {
+  const portrait = { dm_asset_id:'message:0', type:'셀카', tags:['DM'], archive_visible:true };
+  assert.equal(isPhotoVisible(portrait, {}, { dm:true }), true);
+  assert.equal(isPhotoVisible(portrait, {}, { dm:false }), false);
+  assert.equal(isPhotoVisible({...portrait,archive_visible:false}, {dm:true}, {dm:true}), false);
+  assert.equal(isPhotoVisible({...portrait,type:'스크린샷'}, {dm:true}, {dm:true}), false);
+  const view = {...portrait,type:'리우뷰',tags:['DM','풍경']};
+  assert.equal(isPhotoVisible(view, {}, {dm:true,scenery:true}), false);
+  assert.equal(isPhotoVisible(view, {scenery:true}, {dm:true,scenery:true}), true);
+});

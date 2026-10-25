@@ -3,6 +3,7 @@ import useTabVisibility from "./useTabVisibility";
 import { useEffect, useState } from "react";
 import Archive from "./Archive";
 import Login from "./Login";
+import Logout from "./Logout";
 import AdminRoute from "./AdminRoute";
 import Posts from "./Posts";
 import Videos from "./Videos";
@@ -31,6 +32,7 @@ function App() {
   }, []);
 
   if (path === "/login") return <Login />;
+  if (path === "/logout") return <Logout />;
 
   const publicTabs = { '/': 'home', '/photos': 'photos', '/videos': 'videos', '/diary': 'diary', '/guestbook': 'guestbook', '/comments': 'comments', '/posts': 'posts', '/dm': 'dm' };
   publicTabs['/statistics'] = 'statistics';
