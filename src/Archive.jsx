@@ -50,6 +50,7 @@ function Archive({ isAdmin = false }) {
   const detailPanelRef = useRef(null);
   const photoTriggerRef = useRef(null);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState(() => new Set());
+  const [photoSelectionMode, setPhotoSelectionMode] = useState(false);
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [downloadingPhoto, setDownloadingPhoto] = useState(false);
   const [bulkDownloadProgress, setBulkDownloadProgress] = useState("");
@@ -1436,6 +1437,10 @@ const hairColorAliases = {
       <ArchiveLayout
         isAdmin={isAdmin}
         activeTab="photos"
+        mobileToolbarActions={<button type="button" className="archive-mobile-action" aria-pressed={photoSelectionMode} disabled={bulkDownloading} onClick={() => {
+          if (photoSelectionMode) setSelectedPhotoIds(new Set());
+          setPhotoSelectionMode(!photoSelectionMode);
+        }}>{photoSelectionMode ? '선택 완료' : '사진 선택'}</button>}
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="사진이나 키워드를 검색해보세요"
@@ -1463,7 +1468,7 @@ const hairColorAliases = {
           extraSelection={isAdmin ? visibility.allowed : homeExtras}
           setExtraSelection={isAdmin ? visibility.change : setHomeExtras}
           extraDisabled={isAdmin && (!visibility.ready || visibility.saving)}
-          extraHelp={isAdmin ? "체크한 항목의 자료를 공개 아카이브에서 허용합니다. DM은 관리자 전용입니다." : ""}
+          extraHelp={isAdmin ? "체크한 항목의 자료를 공개 아카이브에서 허용합니다. DM도 공개 여부를 여기서 설정합니다." : ""}
           includeDm={isAdmin}
           extraIsPublicationSetting={isAdmin}
           typeLabel="사진 유형"
@@ -1530,12 +1535,16 @@ const hairColorAliases = {
           </div>
         )}
 
-        <div className="photo-grid">
+        <div className={`photo-grid ${photoSelectionMode ? "is-selecting" : ""}`}>
           {filteredPhotos.map((photo, index) => (
             <div
               className={`photo-item ${selectedPhotoIds.has(photo.id) ? "is-selected" : ""}`}
               key={photo.id}
               onClick={() => {
+                if (photoSelectionMode && window.matchMedia('(max-width: 800px), (hover: none)').matches) {
+                  togglePhotoSelection(photo.id);
+                  return;
+                }
                 setSelectedPhoto(photo);
                 if (isAdmin) openEditMode(photo);
                 else setEditMode(false);

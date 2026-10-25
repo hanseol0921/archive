@@ -650,6 +650,7 @@ function ArchiveLayout({
 
   // 사진 / 동영상에 따라 placeholder만 변경 가능
   searchPlaceholder = "사진이나 키워드를 검색해보세요",
+  mobileToolbarActions = null,
   sidebarContent,
 
   // 이 안에 사진 그리드 / 동영상 그리드가 들어감
@@ -1148,6 +1149,7 @@ function ArchiveLayout({
         ========================= */}
 
         {createPortal(<header className="archive-global-toolbar">
+          {mobileToolbarActions}
           {!isAdmin && (
             <button
               type="button"
@@ -1388,6 +1390,7 @@ function ArchiveLayout({
                   return <button key={id} type="button" className={`archive-side-tab ${activeTab === id ? 'active' : ''}`} onClick={onClick}>{label}</button>;
                 })}
 
+            </div>
               <div className="mobile-tab-search">
                 <span>⌕</span>
                 <input
@@ -1402,7 +1405,6 @@ function ArchiveLayout({
                   onChange={(e) => onSearchChange(e.target.value)}
                 />
               </div>
-            </div>
             {/* 공통 검색창 */}
 
             {/* =========================

@@ -310,3 +310,9 @@
 }
 
 .archive-visible-toggle input[type="checkbox"]:focus { box-shadow: none; }
+
+/* Touch selection is an explicit mode, so normal browsing has no checkboxes. */
+@media (max-width: 800px), (hover: none) {
+  .photo-grid:not(.is-selecting) .photo-select-control { display:none; }
+  .photo-grid.is-selecting .photo-select-control { display:grid; opacity:1; transform:none; }
+}
