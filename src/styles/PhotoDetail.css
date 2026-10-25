@@ -222,3 +222,11 @@
 .photo-detail-metadata > div { display:flex; align-items:baseline; gap:8px; min-width:0; }
 .photo-detail-metadata dt { margin:0; color:#888; font-size:12px; line-height:1.6; }
 .photo-detail-metadata dd { margin:0; color:#55514a; font-size:14px; line-height:1.6; overflow-wrap:anywhere; }
+
+.photo-detail-panel.photo-modal-content:not(.is-editing) {
+  height:min(585px, calc(75dvh - 24px));
+  max-height:calc(75dvh - 24px);
+}
+
+.photo-detail-panel.photo-modal-content:not(.is-editing) { grid-template-rows:44px minmax(60px, 1fr) minmax(0, auto); }
+.photo-detail-panel:not(.is-editing) .modal-info { max-height:min(220px, 32dvh); }

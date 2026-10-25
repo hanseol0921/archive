@@ -702,3 +702,31 @@
   .content > .mobile-tab-search { flex:0 0 34px; order:0; width:100%; height:34px; min-height:34px; margin:0 0 10px; box-sizing:border-box; }
   .content .filter-bar > .search-box { display:none; }
 }
+
+/* Compact mobile GNB. The desktop notebook navigation stays in place. */
+.mobile-gnb-title, .mobile-gnb-actions, .mobile-gnb-search, .mobile-home-visitors { display:none; }
+.archive-toolbar-admin { display:contents; }
+@media (max-width:800px) {
+  .archive-global-toolbar { top:0; left:0; right:0; width:100%; max-width:none; padding:8px 12px; box-sizing:border-box; display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; background:#fff; border-bottom:1px solid #eee; }
+  .archive-toolbar-admin { order:-1; display:flex; flex:0 0 100%; justify-content:flex-end; align-items:center; height:24px; }
+  .archive-global-toolbar > .archive-report-button { display:none; }
+  .archive-global-toolbar .mobile-gnb-title { display:block; flex:1; min-width:0; height:40px; padding:0; border:0; border-radius:0; background:transparent; color:var(--archive-accent-text); font-size:20px; font-weight:600; line-height:1.3; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mobile-gnb-actions { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  .archive-global-toolbar .mobile-gnb-icon, .mobile-gnb-more > summary { display:flex; align-items:center; justify-content:center; width:36px; height:40px; padding:0; border:0; background:transparent; color:#222; cursor:pointer; }
+  .mobile-gnb-more { position:relative; }
+  .mobile-gnb-more > summary { list-style:none; }
+  .mobile-gnb-more > summary::-webkit-details-marker { display:none; }
+  .mobile-gnb-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:150px; padding:6px; background:#fff; border:1px solid #ddd; border-radius:7px; box-shadow:0 4px 14px #0002; }
+  .archive-global-toolbar .mobile-gnb-menu button { display:block; width:100%; height:auto; min-height:38px; padding:10px; border:0; text-align:left; font-size:13px; white-space:nowrap; background:#fff; }
+  .mobile-gnb-search { position:absolute; top:calc(100% + 1px); left:0; right:0; display:flex; gap:8px; padding:12px; border-bottom:1px solid #ddd; background:#fff; box-shadow:0 4px 8px #0001; }
+  .mobile-gnb-search input { flex:1; min-width:0; height:36px; padding:0 10px; border:1px solid #ddd; border-radius:5px; font-size:14px; }
+  .archive-global-toolbar .mobile-gnb-search button { height:36px; }
+  .archive-toolbar-space { height:86px; }
+  .archive-book-heading { display:none !important; }
+  .content { margin-top:0 !important; }
+  .archive-side-tabs { position:static !important; display:flex !important; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-start !important; align-items:center !important; padding:0 0 12px !important; gap:6px !important; width:100% !important; }
+  .archive-side-tabs .archive-side-tab, .archive-side-tabs .archive-side-tab.active { flex:0 0 auto !important; width:auto !important; height:auto !important; min-height:32px; padding:7px 11px !important; margin:0 !important; border-radius:5px !important; font-size:12px; line-height:1.4; }
+  .archive-side-tab.active::before { display:none; }
+  .mobile-home-visitors { display:flex; justify-content:flex-start; width:auto; gap:7px; margin:0 0 16px; font-size:12px; }
+  .mobile-home-visitors i { font-style:normal; color:#ccc; }
+}

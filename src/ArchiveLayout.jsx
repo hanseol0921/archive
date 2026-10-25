@@ -1,6 +1,7 @@
 import useTabVisibility from "./useTabVisibility";
 import { signOutToPage } from "./authNavigation";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Search, MoreVertical, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabaseClient";
 import "./styles/App.css";
@@ -9,6 +10,12 @@ import "./styles/ArchiveLayout.css";
 import notebookRing from "./assets/notebook-ring.png";
 
 // 재생목록에 곡을 추가하려면 아래 배열에 같은 형식으로 한 줄씩 넣으면 됩니다.
+const ArchiveVisitorContext = createContext(null);
+export function ArchiveVisitorCounter({ className = '' }) {
+  const counts = useContext(ArchiveVisitorContext);
+  return <div className={`archive-visitor-counter ${className}`} aria-label="방문자 수"><span>TODAY <strong>{counts?.today ?? '—'}</strong></span><i>|</i><span>TOTAL <strong>{counts?.total ?? '—'}</strong></span></div>;
+}
+
 const DEFAULT_BGM_PLAYLIST = [
   {
     url: "https://music.youtube.com/watch?v=ptDnd4lGr-k",
@@ -646,7 +653,7 @@ function ArchiveLayout({
 
   // 각 페이지가 자기 검색 state를 넘겨줌
   search = "",
-  onSearchChange = () => {},
+  onSearchChange,
 
   // 사진 / 동영상에 따라 placeholder만 변경 가능
   searchPlaceholder = "사진이나 키워드를 검색해보세요",
@@ -657,6 +664,20 @@ function ArchiveLayout({
   children,
 }) {
   const pageRef = useRef(null);
+  const mobileMoreRef = useRef(null);
+  const mobileSearchInput = useRef(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileSearchTerm, setMobileSearchTerm] = useState('');
+  useEffect(() => {
+    const outside = event => {
+      if (mobileMoreRef.current && !mobileMoreRef.current.contains(event.target)) mobileMoreRef.current.open = false;
+    };
+    const escape = event => { if (event.key === 'Escape') { if (mobileMoreRef.current) mobileMoreRef.current.open = false; setMobileSearchOpen(false); } };
+    document.addEventListener('pointerdown', outside);
+    window.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', outside); window.removeEventListener('keydown', escape); };
+  }, []);
+  useEffect(() => { if (mobileSearchOpen) mobileSearchInput.current?.focus(); }, [mobileSearchOpen]);
 
   useEffect(() => {
     const page = pageRef.current;
@@ -1149,7 +1170,28 @@ function ArchiveLayout({
         ========================= */}
 
         {createPortal(<header className="archive-global-toolbar">
-          {mobileToolbarActions}
+          <button type="button" className="mobile-gnb-title" onClick={() => {
+            if (isAdmin && siteCopyLoaded) { setSiteCopyDraft(siteCopy); setSiteCopyEditorOpen(true); }
+            else goHome();
+          }}>{siteCopyLoaded ? siteCopy.archiveTitle : '\u00a0'}</button>
+          <div className="mobile-gnb-actions">
+            <button type="button" className="mobile-gnb-icon" aria-label={mobileSearchOpen ? '검색 닫기' : '검색 열기'} aria-expanded={mobileSearchOpen} aria-controls="mobile-gnb-search" onClick={() => {
+              if (mobileMoreRef.current) mobileMoreRef.current.open = false;
+              setMobileSearchOpen(!mobileSearchOpen);
+            }}>{mobileSearchOpen ? <X size={26} /> : <Search size={26} />}</button>
+            <details className="mobile-gnb-more" ref={mobileMoreRef}>
+              <summary aria-label="더보기 메뉴" onClick={() => setMobileSearchOpen(false)}><MoreVertical size={26} /></summary>
+              <div className="mobile-gnb-menu" onClick={event => { if (event.target.closest('button')) mobileMoreRef.current.open = false; }}>
+                {mobileToolbarActions}
+                <button type="button" onClick={() => setGeneralReportOpen(true)}>자료 누락 제보</button>
+              </div>
+            </details>
+          </div>
+          {mobileSearchOpen && <form className="mobile-gnb-search" id="mobile-gnb-search" role="search" onSubmit={event => {
+            event.preventDefault();
+            if (!onSearchChange && mobileSearchTerm.trim()) navigateInsideArchive(`${isAdmin ? '/admin' : '/photos'}?${new URLSearchParams({ search: mobileSearchTerm.trim() })}`);
+            setMobileSearchOpen(false);
+          }}><input ref={mobileSearchInput} type="search" aria-label="아카이브 검색" placeholder={searchPlaceholder} value={onSearchChange ? search : mobileSearchTerm} onChange={event => onSearchChange ? onSearchChange(event.target.value) : setMobileSearchTerm(event.target.value)} /><button type="submit">검색</button></form>}
           {!isAdmin && (
             <button
               type="button"
@@ -1160,6 +1202,7 @@ function ArchiveLayout({
             </button>
           )}
 
+          <div className="archive-toolbar-admin">
           {/* 일반 사용자 */}
           {!isAdmin && (
             <button
@@ -1199,6 +1242,7 @@ function ArchiveLayout({
               </button>
             </div>
           )}
+          </div>
         </header>, document.body)}
         <div className="archive-toolbar-space" aria-hidden="true" />
 
@@ -1391,27 +1435,13 @@ function ArchiveLayout({
                 })}
 
             </div>
-              <div className="mobile-tab-search">
-                <span>⌕</span>
-                <input
-                  type="text"
-                  name={`archive_mobile_content_search_${activeTab}`}
-                  autoComplete="one-time-code"
-                  role="searchbox"
-                  data-lpignore="true"
-                  data-1p-ignore="true"
-                  placeholder={searchPlaceholder}
-                  value={search}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                />
-              </div>
             {/* 공통 검색창 */}
 
             {/* =========================
                 페이지마다 바뀌는 부분
             ========================= */}
 
-            {children}
+            <ArchiveVisitorContext.Provider value={visitorCounts}>{children}</ArchiveVisitorContext.Provider>
           </main>
         </div>
       </div>

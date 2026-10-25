@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
-import ArchiveLayout from "./ArchiveLayout";
+import ArchiveLayout, { ArchiveVisitorCounter } from "./ArchiveLayout";
 import { deleteFromR2, getR2Key, uploadToR2 } from "./r2Storage";
 import "./styles/App.css";
 
@@ -104,6 +104,7 @@ function Home({ isAdmin = false }) {
   return (
     <ArchiveLayout isAdmin={isAdmin} activeTab="home">
       <section className="minihome-content">
+        <ArchiveVisitorCounter className="mobile-home-visitors" />
         <section className="minihome-news">
           <div className="minihome-section-title minihome-news-title"><strong>Updated news</strong></div>
           <div className="minihome-news-body">

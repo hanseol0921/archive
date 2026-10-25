@@ -22,7 +22,7 @@ function Archive({ isAdmin = false }) {
   const isDesktopDevice = !isMobileDevice;
   const [photoType, setPhotoType] = useState("전체");
   const [hairColorFilter, setHairColorFilter] = useState("전체");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get("search") || "");
   const [photos, setPhotos] = useState([]);
   const [photoPostTimes, setPhotoPostTimes] = useState({});
   const [copyNotice, setCopyNotice] = useState("");
