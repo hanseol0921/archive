@@ -471,10 +471,10 @@
     gap: 3px !important;
   }
   .archive-side-tab {
-    width: auto !important;
+    width: 63px !important;
     min-width: 0 !important;
     height: 32px !important;
-    flex: 1 1 auto !important;
+    flex: 0 0 63px !important;
     padding-inline: 3px !important;
     white-space: nowrap;
     font-size: 11px;
@@ -723,10 +723,9 @@
   .archive-global-toolbar .mobile-gnb-search button { height:36px; }
   .archive-toolbar-space { height:86px; }
   .archive-book-heading { display:none !important; }
-  .content { margin-top:0 !important; }
-  .archive-side-tabs { position:static !important; display:flex !important; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-start !important; align-items:center !important; padding:0 0 12px !important; gap:6px !important; width:100% !important; }
-  .archive-side-tabs .archive-side-tab, .archive-side-tabs .archive-side-tab.active { flex:0 0 auto !important; width:auto !important; height:auto !important; min-height:32px; padding:7px 11px !important; margin:0 !important; border-radius:5px !important; font-size:12px; line-height:1.4; }
-  .archive-side-tab.active::before { display:none; }
+  .content { margin-top:calc(var(--mobile-tabs-height, 36px) + 8px) !important; }
+  .archive-side-tabs { position:absolute !important; bottom:100% !important; left:0 !important; right:0 !important; display:flex !important; flex-wrap:wrap; justify-content:flex-start !important; align-items:flex-end !important; padding:0 8px !important; gap:3px !important; width:100% !important; }
+  .archive-side-tab.active::before { display:block; }
   .mobile-home-visitors { display:flex; justify-content:flex-start; width:auto; gap:7px; margin:0 0 16px; font-size:12px; }
   .mobile-home-visitors i { font-style:normal; color:#ccc; }
 }

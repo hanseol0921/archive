@@ -664,6 +664,14 @@ function ArchiveLayout({
   children,
 }) {
   const pageRef = useRef(null);
+  const mobileTabsRef = useRef(null);
+  useEffect(() => {
+    const tabs = mobileTabsRef.current;
+    if (!tabs) return;
+    const observer = new ResizeObserver(() => { tabs.parentElement?.style.setProperty("--mobile-tabs-height", `${tabs.getBoundingClientRect().height}px`); });
+    observer.observe(tabs);
+    return () => observer.disconnect();
+  }, []);
   const mobileMoreRef = useRef(null);
   const mobileSearchInput = useRef(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -1418,7 +1426,7 @@ function ArchiveLayout({
                 공통 오른쪽 탭
             ========================= */}
 
-            <div className="archive-side-tabs">
+            <div className="archive-side-tabs" ref={mobileTabsRef}>
               {(tabVisibility.ready || (isAdmin && tabVisibility.error)) && tabVisibility.order
                 .filter(id => id === 'settings' ? isAdmin : tabShown(id)).map(id => {
                   const tabs = {
