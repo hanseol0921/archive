@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {sourcePostId,resolveWeverseProfile,commentThread,kstInput,inputToUTC,postTimestamp} from '../src/weverseData.js';
+import {sourcePostId,resolveWeverseProfile,sharedWeverseProfileSnapshots,commentThread,kstInput,inputToUTC,postTimestamp} from '../src/weverseData.js';
 
 test('original post IDs link artist and diary entries without accepting other sites',()=>{
   assert.equal(sourcePostId('https://weverse.io/boynextdoor/artist/4-123?x=1'),'4-123');
@@ -48,4 +48,19 @@ test('date ranges use KST regardless of the browser timezone, including the last
   assert.equal(inputToUTC('2026-10-09T10:25',true),'2026-10-09T01:25:59.999Z');
   assert.equal(postTimestamp({date:'2026-10-09'}),'2026-10-09T00:00:00+09:00');
   assert.throws(()=>inputToUTC('invalid'));
+});
+
+
+test('DM start times control post profiles independently of scrape time and DM range end', () => {
+  const snapshots = sharedWeverseProfileSnapshots([
+    {id:'old',room_id:'WRBQM41',from_sent_at:'2026-10-01T00:00:00Z',through_sent_at:'2026-10-01T01:00:00Z',avatar_url:'old.jpg'},
+    {id:'new',room_id:'WRBQM41',from_sent_at:'2026-11-01T06:03:00Z',through_sent_at:'2026-11-01T06:04:00Z',avatar_url:'new.jpg'},
+    {id:'other',room_id:'another',from_sent_at:'2026-11-01T06:02:00Z',avatar_url:'other.jpg'},
+  ]);
+  snapshots.push({id:'scraped',time_basis:'observed',observed_at:'2026-11-02T00:00:00Z',post_ids:['1-123'],avatar_url:'new.jpg'});
+  assert.equal(resolveWeverseProfile(snapshots,[],'2026-11-01T06:02:59Z','1-123').avatar_url,'old.jpg');
+  assert.equal(resolveWeverseProfile(snapshots,[],'2026-11-01T06:03:00Z','1-123').avatar_url,'new.jpg');
+  assert.equal(resolveWeverseProfile(snapshots,[],'2026-11-03T00:00:00Z').avatar_url,'new.jpg');
+  assert.equal(resolveWeverseProfile(snapshots,[],'2026-09-01T00:00:00Z'),null);
+  assert.equal(snapshots.some(p=>p.avatar_url==='other.jpg'),false);
 });

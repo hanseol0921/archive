@@ -698,6 +698,14 @@ function ArchiveLayout({
       const naturalTop = content.getBoundingClientRect().top - mobileTabsHeight;
       const top = Math.max(visible ? mobileToolbarHeight : 0, naturalTop);
       mobileTabsRef.current?.style.setProperty('--mobile-tabs-top', top + 'px');
+      content.querySelectorAll('.archive-filter-slot').forEach(slot => {
+        const bar = slot.querySelector('.filter-bar');
+        if (!bar) return;
+        const rect = slot.getBoundingClientRect();
+        bar.style.setProperty('--filter-top', Math.max(rect.top, top + mobileTabsHeight) + 'px');
+        bar.style.setProperty('--filter-left', rect.left + 'px');
+        bar.style.setProperty('--filter-width', rect.width + 'px');
+      });
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(placeTabs); };
     const onScroll = event => {

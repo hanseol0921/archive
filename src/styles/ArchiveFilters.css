@@ -559,3 +559,21 @@
     border-radius: 22px 22px 0 0;
   }
 }
+
+@media (max-width: 800px) {
+  .content .archive-filter-slot {
+    height: var(--filter-bar-height, 48px);
+    flex: 0 0 auto;
+    width: 100%;
+  }
+  .content .archive-filter-slot > .filter-bar {
+    position: fixed;
+    top: var(--filter-top, 122px);
+    left: var(--filter-left, 16px);
+    width: var(--filter-width, calc(100% - 32px));
+    box-sizing: border-box;
+    margin: 0;
+    z-index: 100;
+    background: #fff;
+  }
+}

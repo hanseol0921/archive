@@ -35,6 +35,7 @@ export function wordDocuments({dm = [], posts = [], comments = []}) {
     add('dm', row.id, row.sent_at, text);
   }
   for (const row of posts) {
+    if (row.is_member_post) continue;
     const pollText = (row.content_blocks || []).filter(b => b.type === 'poll')
       .flatMap(b => [b.question || '', ...(b.options || []).map(o => o.text || '')]);
     const text = [row.content || '', ...pollText].join('\n');

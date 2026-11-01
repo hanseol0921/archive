@@ -9,6 +9,16 @@ export function sourcePostId(url) {
   } catch { return null; }
 }
 
+// A manually selected first DM establishes a change boundary for posts too.
+export function sharedWeverseProfileSnapshots(rows) {
+  return rows.filter(p => p.room_id === 'WRBQM41').map(p => ({
+    ...p, id: 'dm:' + p.id, member_id: WEVERSE_ARTIST,
+    effective_at: p.from_sent_at || p.effective_at || p.observed_at,
+    time_basis: p.from_sent_at ? 'verified' : 'observed',
+    shared_dm_boundary: Boolean(p.from_sent_at),
+  })).filter(p => !p.through_sent_at || p.from_sent_at);
+}
+
 export function resolveWeverseProfile(snapshots, overrides, at, sourceId=null) {
   const time = Date.parse(at);
   const manual = overrides.filter(p => time >= Date.parse(p.from_at) && time <= Date.parse(p.through_at))
@@ -17,6 +27,10 @@ export function resolveWeverseProfile(snapshots, overrides, at, sourceId=null) {
   const ordered = [...snapshots].sort((a,b) => Date.parse(a.effective_at || a.observed_at) - Date.parse(b.effective_at || b.observed_at));
   const verified=ordered.filter(p=>p.time_basis==='verified'&&Date.parse(p.effective_at)<=time).at(-1);
   if(verified)return verified;
+  // Once DM change times are known, a later scrape must not override history.
+  if (ordered.some(p => p.shared_dm_boundary)) {
+    return ordered.filter(p => Date.parse(p.effective_at || p.observed_at) <= time).at(-1) || null;
+  }
   const captured=ordered.find(p=>sourceId && p.post_ids?.includes(sourceId));
   if(captured)return captured;
   return ordered.filter(p => Date.parse(p.effective_at || p.observed_at) <= time).at(-1) || ordered.find(p=>p.time_basis==='observed') || null;

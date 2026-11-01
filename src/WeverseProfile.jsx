@@ -5,7 +5,7 @@ import {supabase} from './supabaseClient';
 import {sharedProfileAssets,uploadArtistProfile} from './artistProfileAssets';
 import {uniqueArtistProfiles,profilePhotoKey,enrichSharedProfile} from './artistProfileIdentity';
 import {cropStyle,profileCrop,croppedProfileURL} from './profileCrop';
-import {WEVERSE_ARTIST,resolveWeverseProfile,kstInput,inputToUTC} from './weverseData';
+import {WEVERSE_ARTIST,resolveWeverseProfile,sharedWeverseProfileSnapshots,kstInput,inputToUTC} from './weverseData';
 import './styles/Weverse.css';
 
 let cache;
@@ -26,8 +26,7 @@ function loadProfiles() {
       }
     }
     const shared=await sharedProfileAssets();
-    snapshots.push(...shared.filter(p=>p.room_id==='WRBQM41' && !p.through_sent_at).map(p=>({...p,id:`dm:${p.id}`,member_id:WEVERSE_ARTIST,time_basis:'observed'})));
-    overrides.push(...shared.filter(p=>p.room_id==='WRBQM41' && p.through_sent_at && p.from_sent_at).map(p=>({...p,id:`dm:${p.id}`,from_at:p.from_sent_at,through_at:p.through_sent_at})));
+    snapshots.push(...sharedWeverseProfileSnapshots(shared));
     return {snapshots,overrides};
   })().catch(error=>{cache=null;throw error;});
   return cache;

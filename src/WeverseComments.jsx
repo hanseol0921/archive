@@ -11,6 +11,7 @@ function CommentContent({row,isAdmin}) {
   return <div className={row.is_target_artist?'wv-comment-author artist':'wv-comment-author'}>
     {row.author_type==='artist' && row.is_target_artist && <WeverseProfile at={row.created_at} sourceId={row.post_id} name={row.author} isAdmin={isAdmin}/>}
     {row.author_type==='fan' && <span className="wv-fan-avatar" role="img" aria-label="원도어 기본 프로필"><UserRound size={23}/></span>}
+    {row.author_type==='artist' && !row.is_target_artist && <span className="wv-member-avatar" role="img" aria-label="멤버 프로필"><UserRound size={23}/></span>}
     <div><div className="wv-comment-byline"><strong>{row.author_type==='fan'?'원도어':row.author}</strong><time>{row.created_at?new Date(row.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):''}</time></div>
       <p className="wv-comment-text">{row.text}</p>{row.images?.map((image,i)=><img className="wv-comment-image" key={i} src={image.url} alt="댓글 이미지" loading="lazy"/>)}
       {row.links?.map(url=><a key={url} className="wv-comment-link" href={url} target="_blank" rel="noreferrer">{url}</a>)}</div></div>;
@@ -55,7 +56,7 @@ export default function WeverseComments({isAdmin=false}) {
     async function load() {
       setBusy(true);setError('');
       let query=supabase.from('weverse_comments').select('*,post:weverse_comment_posts!inner(*)')
-        .eq('artist_member_id',WEVERSE_ARTIST).eq('is_target_artist',true);
+        .eq('artist_member_id',WEVERSE_ARTIST).eq('author_type','artist');
       if(filter==='artist')query=query.eq('post.is_target_artist',true);
       if(filter==='fan')query=query.eq('post.author_type','fan');
       const {data,error:e}=await query.order('created_at',{ascending:false}).order('id',{ascending:false}).range(page*100,page*100+99);
@@ -73,7 +74,7 @@ export default function WeverseComments({isAdmin=false}) {
     }
     load();return()=>{active=false;};
   },[page,filter]);
-  const visible=rows.filter(row=>filter==='all'||(filter==='artist'?row.post?.is_target_artist:row.post?.author_type==='fan'));
+  const visible=rows.filter(row=>(row.is_target_artist || row.post?.is_target_artist) && (filter==='all'||(filter==='artist'?row.post?.is_target_artist:row.post?.author_type==='fan')));
   return <ArchiveLayout isAdmin={isAdmin} activeTab="comments"><section className="wv-comments-page">
     <header><h1>댓글</h1>{isAdmin&&<a href="/admin/weverse/import">가져오기</a>}</header>
     <div className="wv-comment-filters" role="group" aria-label="원글 작성자">{[['all','전체'],['fan','팬 글'],['artist','리우 글']].map(([value,label])=><button key={value} aria-pressed={filter===value} onClick={()=>{setPage(0);setFilter(value);}}>{label}</button>)}</div>
@@ -83,7 +84,7 @@ export default function WeverseComments({isAdmin=false}) {
         {row.post.url&&<a href={row.post.url} target="_blank" rel="noreferrer">위버스 원글</a>}</details>}
       {parents.has(row.parent_comment_id)&&<div className="wv-parent-preview"><CommentContent row={parents.get(row.parent_comment_id)} isAdmin={isAdmin}/></div>}
       <CommentContent row={row} isAdmin={isAdmin}/>
-      {row.post?.is_target_artist&&<a className="wv-post-link" href={`${isAdmin?'/admin':''}/${diarySources.has(row.post_id)?'diary':'posts'}?weverse=${encodeURIComponent(row.post_id)}`}>{diarySources.has(row.post_id)?'다이어리':'게시글'}로 이동</a>}
+      {row.post?.author_type==='artist'&&<a className="wv-post-link" href={`${isAdmin?'/admin':''}/${diarySources.has(row.post_id)?'diary':'posts'}?weverse=${encodeURIComponent(row.post_id)}`}>{diarySources.has(row.post_id)?'다이어리':'게시글'}로 이동</a>}
     </li>)}</ol>
     {!busy&&!visible.length&&!error&&<p className="wv-empty">가져온 댓글이 없습니다.</p>}
     {more&&<button className="wv-load-more" disabled={busy} onClick={()=>setPage(page+1)}>{busy?'불러오는 중':'이전 댓글'}</button>}

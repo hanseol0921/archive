@@ -1,6 +1,6 @@
 import { MEDIA_TYPES, VIDEO_TYPES, UNCLASSIFIED_TYPE } from "./mediaClassification";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UserRound } from 'lucide-react';
 import { supabase } from "./supabaseClient";
 import ArchiveLayout from "./ArchiveLayout";
 import "./styles/App.css";
@@ -12,9 +12,16 @@ import { deleteFromR2, getR2Key } from "./r2Storage";
 import WeverseProfile from './WeverseProfile';
 import {PostComments} from './WeverseComments';
 import {sourcePostId,postTimestamp} from './weverseData';
+import {loadMemberPosts} from './memberPosts';
+import useTabVisibility from './useTabVisibility';
 import WeversePoll from './WeversePoll';
 
 function Posts({ isAdmin = false }) {
+  const visibility = useTabVisibility();
+  const canShowMembers = isAdmin || visibility.allowed?.comments === true;
+  const [showMemberPosts,setShowMemberPosts] = useState(false);
+  const [memberPosts,setMemberPosts] = useState([]);
+  const [memberError,setMemberError] = useState('');
   const [posts, setPosts] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -105,6 +112,19 @@ function Posts({ isAdmin = false }) {
     return rows;
   }
 
+  useEffect(()=>{
+    const requested = new URLSearchParams(window.location.search).get('weverse');
+    if(!canShowMembers || (!showMemberPosts && !requested))return;
+    let active=true;
+    loadMemberPosts(supabase,posts).then(rows=>{
+      if(!active)return;
+      setMemberPosts(rows);setMemberError('');
+      const selected=rows.find(p=>sourcePostId(p.weverse_url)===requested);
+      if(selected){setShowMemberPosts(true);setSelectedPost(selected);}
+    }).catch(()=>{if(active)setMemberError('멤버 게시글을 불러오지 못했습니다.');});
+    return()=>{active=false;};
+  },[showMemberPosts,canShowMembers,posts]);
+
   async function loadPosts() {
     setLoading(true);
 
@@ -170,6 +190,9 @@ function Posts({ isAdmin = false }) {
   // =========================
 
   function getPostMedia(postId) {
+    const member = memberPosts.find(p=>p.id===postId);
+    if(member)return member.member_images.map((image,index)=>({id:`${postId}:${index}`,post_id:postId,
+      image_url:image.url,thumbnail_url:image.url,mediaKind:'photo',media_order:index}));
     const postPhotos = photos
       .filter(
         (photo) =>
@@ -1273,13 +1296,15 @@ function handleEditCropEnd(
   }, [lightboxIndex, selectedPhotos.length]);
 
   const normalizedSearch = search.trim().toLowerCase();
+  const visiblePosts = [...posts,...(showMemberPosts && canShowMembers ? memberPosts : [])]
+    .sort((a,b)=>(Date.parse(postTimestamp(b)) || 0)-(Date.parse(postTimestamp(a)) || 0));
   const filteredPosts = normalizedSearch
-    ? posts.filter((post) =>
+    ? visiblePosts.filter((post) =>
         [post.content, post.author, post.date, post.diary_title, ...(Array.isArray(post.tags) ? post.tags : [])]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedSearch)),
       )
-    : posts;
+    : visiblePosts;
 
   // =========================
   // 화면
@@ -1296,6 +1321,8 @@ function handleEditCropEnd(
         searchPlaceholder="게시글 내용을 검색해보세요"
       >
           <div className="post-content" hidden={!!selectedPost}>
+            {canShowMembers && <label className="member-post-toggle">멤버 게시글<input type="checkbox" role="switch" checked={showMemberPosts} onChange={e=>setShowMemberPosts(e.target.checked)}/></label>}
+            {memberError && showMemberPosts && <p role="alert">{memberError}</p>}
 
             {/* =========================
                 게시글 목록
@@ -1356,7 +1383,7 @@ function handleEditCropEnd(
 
                       <div className="post-card-header">
                         <div className="post-list-profile" onClick={event => event.stopPropagation()}>
-                          <WeverseProfile at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)} name={post.author} isAdmin={isAdmin} />
+                          {post.is_member_post ? <span className="wv-member-avatar" aria-label="멤버 프로필"><UserRound size={23}/></span> : <WeverseProfile at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)} name={post.author} isAdmin={isAdmin} />}
                         </div>
                         <div className="post-list-identity">
                           {post.author && <div className="post-author">{post.author}</div>}
@@ -1523,7 +1550,7 @@ function handleEditCropEnd(
 
                 <div className="post-modal-header">
 
-                  <WeverseProfile at={postTimestamp(selectedPost)} sourceId={sourcePostId(selectedPost.weverse_url)} name={selectedPost.author} isAdmin={isAdmin}/>
+                  {selectedPost.is_member_post ? <span className="wv-member-avatar" aria-label="멤버 프로필"><UserRound size={23}/></span> : <WeverseProfile at={postTimestamp(selectedPost)} sourceId={sourcePostId(selectedPost.weverse_url)} name={selectedPost.author} isAdmin={isAdmin}/>}
 
                   {selectedPost.author && (
                     <div className="post-modal-author">
@@ -1558,7 +1585,7 @@ function handleEditCropEnd(
                         위버스 바로가기
                       </a>
                     )}
-                    {isAdmin && (
+                    {isAdmin && !selectedPost.is_member_post && (
                       <>
                         <button type="button" onClick={() => openPostEdit(selectedPost)}>
                           수정
@@ -1572,7 +1599,7 @@ function handleEditCropEnd(
                         </button>
                       </>
                     )}
-                    {!isAdmin && (
+                    {!isAdmin && !selectedPost.is_member_post && (
                       <button type="button" onClick={() => setReportTarget({
                         type: "post",
                         id: selectedPost.id,

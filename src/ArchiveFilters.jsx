@@ -91,6 +91,18 @@ function ArchiveFilters({
   const [openFilter, setOpenFilter] = useState(null);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const filterPanelRef = useRef(null);
+  const filterSlotRef = useRef(null);
+  useEffect(() => {
+    const bar = barRef.current;
+    const slot = filterSlotRef.current;
+    if (!bar || !slot) return;
+    const observer = new ResizeObserver(() => {
+      slot.style.setProperty('--filter-bar-height', bar.getBoundingClientRect().height + 'px');
+      window.dispatchEvent(new Event('resize'));
+    });
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
   const barRef = useRef(null);
   const allExtrasRef = useRef(null);
   const extraOptions = [["members", "멤버"], ["food", "음식"], ["scenery", "풍경"], ["dogs", "짱대박"], ["other", "그 외"], ...(includeDm ? [["dm", "DM"]] : [])];
@@ -134,7 +146,7 @@ function ArchiveFilters({
   }
 
   return (
-    <div className="filter-bar" ref={barRef}>
+    <div className="archive-filter-slot" ref={filterSlotRef}><div className="filter-bar" ref={barRef}>
       {leadingControl !== undefined ? leadingControl : <div className="filter-panel-wrap" ref={filterPanelRef}>
         <button
           type="button"
@@ -322,7 +334,7 @@ function ArchiveFilters({
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-    </div>
+    </div></div>
   );
 }
 

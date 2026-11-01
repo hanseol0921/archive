@@ -40,7 +40,9 @@ export async function importWeverseArchive(archive,files,progress) {
   if(setup) throw new Error(`먼저 Supabase에서 scripts/weverse-comments-profiles.sql을 실행해 주세요. ${setup.message}`);
   const cache=profileAssetCache(await sharedProfileAssets());
   const existing=await allRows('weverse_comments','id,images');
-  const roots=await allRows('weverse_comment_posts','id,images');
+  let roots;
+  try { roots=await allRows('weverse_comment_posts','id,images,published_at'); }
+  catch(error) { throw new Error(`scripts/weverse-comments-profiles.sql을 Supabase에서 다시 실행해 주세요. ${error.message}`,{cause:error}); }
   const profiles=await allRows('weverse_profile_snapshots','id,avatar_url,background_url');
   for(const row of [...existing,...roots,...profiles]) {
     for(const url of [...(row.images||[]).map(i=>i.url),row.avatar_url,row.background_url].filter(Boolean)) {
@@ -84,7 +86,8 @@ export async function importWeverseArchive(archive,files,progress) {
   const posts=[];
   for(const row of archive.posts||[]) posts.push({id:row.id,artist_member_id:WEVERSE_ARTIST,
     author:row.author_type==='fan'?'원도어':row.author,author_type:row.author_type,is_target_artist:!!row.is_target_artist,
-    text:row.text||'',url:row.url||'',membership_only:!!row.membership_only,images:await images(row)});
+    text:row.text||'',url:row.url||'',membership_only:!!row.membership_only,images:await images(row),
+    published_at:row.published_at ? new Date(typeof row.published_at==='string' && /^\d+$/.test(row.published_at) ? Number(row.published_at) : row.published_at).toISOString() : null});
   const comments=[];
   for(const row of archive.comments||[]) {
     const value=row.created_at;
@@ -107,5 +110,7 @@ export async function importWeverseArchive(archive,files,progress) {
     if(verify || data.length!==batch.length) throw new Error('저장 확인에 실패했습니다. 다시 가져오세요.');
   }
   const oldIds=new Set(existing.map(c=>c.id));
-  return {newComments:comments.filter(c=>c.is_target_artist&&!oldIds.has(c.id)).length,existingComments:comments.filter(c=>c.is_target_artist&&oldIds.has(c.id)).length,uploaded,reused};
+  const ownPosts=new Set(posts.filter(p=>p.is_target_artist).map(p=>p.id));
+  const artistComments=comments.filter(c=>c.is_target_artist || (c.author_type==='artist' && ownPosts.has(c.post_id)));
+  return {newComments:artistComments.filter(c=>!oldIds.has(c.id)).length,existingComments:artistComments.filter(c=>oldIds.has(c.id)).length,uploaded,reused};
 }

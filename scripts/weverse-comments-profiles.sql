@@ -29,6 +29,7 @@ create table if not exists public.weverse_profile_overrides (
   created_at timestamptz not null default now(), check(from_at <= through_at)
 );
 alter table public.weverse_profile_snapshots add column if not exists post_ids text[] not null default '{}';
+alter table public.weverse_comment_posts add column if not exists published_at timestamptz;
 alter table public.weverse_comment_posts enable row level security;
 alter table public.weverse_comments enable row level security;
 alter table public.weverse_profile_snapshots enable row level security;
@@ -56,10 +57,10 @@ begin
   if auth.uid() is distinct from '72d934cf-ddeb-49cb-8d57-51bc35da492c'::uuid then
     raise exception 'Admin only';
   end if;
-  insert into public.weverse_comment_posts(id,artist_member_id,author,author_type,is_target_artist,text,url,membership_only,images)
-  select id,artist_member_id,case when author_type='fan' then '원도어' else author end,author_type,is_target_artist,text,url,membership_only,images
-  from jsonb_to_recordset(p_posts) as x(id text,artist_member_id text,author text,author_type text,is_target_artist boolean,text text,url text,membership_only boolean,images jsonb)
-  on conflict(id) do update set text=excluded.text,author=excluded.author,url=excluded.url,images=excluded.images,membership_only=excluded.membership_only;
+  insert into public.weverse_comment_posts(id,artist_member_id,author,author_type,is_target_artist,text,url,membership_only,images,published_at)
+  select id,artist_member_id,case when author_type='fan' then '원도어' else author end,author_type,is_target_artist,text,url,membership_only,images,published_at
+  from jsonb_to_recordset(p_posts) as x(id text,artist_member_id text,author text,author_type text,is_target_artist boolean,text text,url text,membership_only boolean,images jsonb,published_at timestamptz)
+  on conflict(id) do update set text=excluded.text,author=excluded.author,url=excluded.url,images=excluded.images,membership_only=excluded.membership_only,published_at=coalesce(excluded.published_at,weverse_comment_posts.published_at);
   insert into public.weverse_comments(id,post_id,parent_comment_id,artist_member_id,author,author_type,is_target_artist,text,created_at,images,links)
   select id,post_id,parent_comment_id,artist_member_id,case when author_type='fan' then '원도어' else author end,author_type,is_target_artist,text,created_at,images,links
   from jsonb_to_recordset(p_comments) as x(id text,post_id text,parent_comment_id text,artist_member_id text,author text,author_type text,is_target_artist boolean,text text,created_at timestamptz,images jsonb,links jsonb)
