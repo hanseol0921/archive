@@ -9,7 +9,8 @@ import {WEVERSE_ARTIST,resolveWeverseProfile,sharedWeverseProfileSnapshots,kstIn
 import './styles/Weverse.css';
 
 let cache;
-window.addEventListener('weverse:profile-changed',()=>{cache=null;});
+let loadedProfiles;
+window.addEventListener('weverse:profile-changed',()=>{cache=null;loadedProfiles=null;});
 supabase.auth.onAuthStateChange(event=>{
   if(['SIGNED_IN','SIGNED_OUT'].includes(event)) {
     cache=null;setTimeout(()=>window.dispatchEvent(new Event('weverse:profile-changed')),0);
@@ -20,34 +21,42 @@ function loadProfiles() {
     const snapshots=[],overrides=[];
     for(const [table,target] of [['weverse_profile_snapshots',snapshots],['weverse_profile_overrides',overrides]]) {
       for(let offset=0;;offset+=500) {
-        const {data,error}=await supabase.from(table).select('*').eq('member_id',WEVERSE_ARTIST).order('id').range(offset,offset+499);
+        const {data,error}=await supabase.from(table).select('*').order('id').range(offset,offset+499);
         if(error) throw error;
         target.push(...data);if(data.length<500) break;
       }
     }
     const shared=await sharedProfileAssets();
     snapshots.push(...sharedWeverseProfileSnapshots(shared));
-    return {snapshots,overrides};
+    loadedProfiles={snapshots,overrides};
+    return loadedProfiles;
   })().catch(error=>{cache=null;throw error;});
   return cache;
 }
 
 function useHistoricalProfile(at,sourceId) {
-  const [state,setState]=useState({snapshots:[],overrides:[]}),[error,setError]=useState('');
+  const [state,setState]=useState(()=>loadedProfiles || {snapshots:[],overrides:[]}),[ready,setReady]=useState(Boolean(loadedProfiles)),[error,setError]=useState('');
   useEffect(()=>{
     let active=true;
-    const refresh=()=>loadProfiles().then(data=>{if(active){setState(data);setError('');}}).catch(()=>{if(active)setError('위버스 프로필 기록을 불러오지 못했습니다.');});
+    const refresh=()=>loadProfiles().then(data=>{if(active){setState(data);setReady(true);setError('');}}).catch(()=>{if(active)setError('위버스 프로필 기록을 불러오지 못했습니다.');});
     refresh();window.addEventListener('weverse:profile-changed',refresh);
     return()=>{active=false;window.removeEventListener('weverse:profile-changed',refresh);};
   },[]);
-  const selectedProfile=resolveWeverseProfile(state.snapshots,state.overrides,at,sourceId);
-  const profile=enrichSharedProfile(selectedProfile,state.snapshots,selectedProfile?.time_basis==='manual'?at:null);
-  return {state, profile, error};
+  const selectedProfile=resolveWeverseProfile(state.snapshots.filter(p=>p.member_id===WEVERSE_ARTIST),state.overrides.filter(p=>p.member_id===WEVERSE_ARTIST),at,sourceId);
+  const profile=enrichSharedProfile(selectedProfile,state.snapshots.filter(p=>p.member_id===WEVERSE_ARTIST),selectedProfile?.time_basis==='manual'?at:null);
+  return {state, profile, error, ready};
 }
 
 export function WeverseProfileName({at,sourceId=null,name='리우'}) {
-  const {profile}=useHistoricalProfile(at,sourceId);
-  return profile?.name || name;
+  const {profile,ready}=useHistoricalProfile(at,sourceId);
+  return ready ? profile?.name || '리우' : <span aria-label="프로필 불러오는 중" className="wv-name-loading">　</span>;
+}
+
+export function WeverseMemberAvatar({name,at,sourceId}) {
+  const {state}=useHistoricalProfile(at,sourceId);
+  const candidates=state.snapshots.filter(p=>p.member_id!==WEVERSE_ARTIST && p.name===name);
+  const profile=resolveWeverseProfile(candidates,[],at,sourceId);
+  return <span className="wv-member-avatar" role="img" aria-label={name+' 프로필'}>{profile?.avatar_url ? <img src={profile.avatar_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'50%'}}/> : <UserRound size={23}/>}</span>;
 }
 
 export default function WeverseProfile({at,sourceId=null,name='리우',isAdmin=false}) {
@@ -56,7 +65,7 @@ export default function WeverseProfile({at,sourceId=null,name='리우',isAdmin=f
   return <><button className="wv-avatar" title={error||'위버스 프로필'} aria-label={`${name} 위버스 프로필`} onClick={()=>setOpen(true)}>
     {profile?.avatar_url?<img src={profile.avatar_url} style={cropStyle(profileCrop(profile.avatar_url))} alt=""/>:<UserRound size={24}/>}
     {isAdmin && <span className="wv-avatar-camera"><Camera size={20}/></span>}</button>
-    {open && createPortal(<ProfileViewer at={at} selected={profile} state={state} name={name} isAdmin={isAdmin} onClose={()=>setOpen(false)}/>,document.body)}</>;
+    {open && createPortal(<ProfileViewer at={at} selected={profile} state={{snapshots:state.snapshots.filter(p=>p.member_id===WEVERSE_ARTIST),overrides:state.overrides.filter(p=>p.member_id===WEVERSE_ARTIST)}} name={name} isAdmin={isAdmin} onClose={()=>setOpen(false)}/>,document.body)}</>;
 }
 
 function ProfileViewer({at,selected,state,name,isAdmin,onClose}) {

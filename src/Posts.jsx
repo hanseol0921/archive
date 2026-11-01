@@ -9,7 +9,7 @@ import "./styles/Posts.css";
 import TagPicker from "./TagPicker";
 import ContentReport from "./ContentReport";
 import { deleteFromR2, getR2Key } from "./r2Storage";
-import WeverseProfile, { WeverseProfileName } from './WeverseProfile';
+import WeverseProfile, { WeverseProfileName, WeverseMemberAvatar } from './WeverseProfile';
 import {PostComments} from './WeverseComments';
 import {sourcePostId,postTimestamp} from './weverseData';
 import {loadMemberPosts} from './memberPosts';
@@ -1383,7 +1383,7 @@ function handleEditCropEnd(
 
                       <div className="post-card-header">
                         <div className="post-list-profile" onClick={event => event.stopPropagation()}>
-                          {post.is_member_post ? <span className="wv-member-avatar" aria-label="멤버 프로필"><UserRound size={23}/></span> : <WeverseProfile at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)} name={post.author} isAdmin={isAdmin} />}
+                          {post.is_member_post ? <WeverseMemberAvatar name={post.author} at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)}/> : <WeverseProfile at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)} name={post.author} isAdmin={isAdmin} />}
                         </div>
                         <div className="post-list-identity">
                           {post.author && <div className="post-author">{post.is_member_post ? post.author : <WeverseProfileName at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)} name={post.author}/>}</div>}
@@ -1550,7 +1550,7 @@ function handleEditCropEnd(
 
                 <div className="post-modal-header">
 
-                  {selectedPost.is_member_post ? <span className="wv-member-avatar" aria-label="멤버 프로필"><UserRound size={23}/></span> : <WeverseProfile at={postTimestamp(selectedPost)} sourceId={sourcePostId(selectedPost.weverse_url)} name={selectedPost.author} isAdmin={isAdmin}/>}
+                  {selectedPost.is_member_post ? <WeverseMemberAvatar name={selectedPost.author} at={postTimestamp(selectedPost)} sourceId={sourcePostId(selectedPost.weverse_url)}/> : <WeverseProfile at={postTimestamp(selectedPost)} sourceId={sourcePostId(selectedPost.weverse_url)} name={selectedPost.author} isAdmin={isAdmin}/>}
 
                   {selectedPost.author && (
                     <div className="post-modal-author">

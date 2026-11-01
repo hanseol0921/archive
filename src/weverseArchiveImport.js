@@ -19,7 +19,7 @@ export function validateWeverseArchive(value) {
     ids.add(row.id);
   }
   for(const row of value.comments||[]) if(row.parent_comment_id && !ids.has(row.parent_comment_id)) throw new Error('부모 댓글이 누락됐습니다.');
-  for(const p of value.profiles) if(p.member_id!==WEVERSE_ARTIST || !p.id || !Number.isFinite(Date.parse(p.observed_at))
+  for(const p of value.profiles) if(typeof p.member_id!=='string' || !p.member_id || !p.id || !Number.isFinite(Date.parse(p.observed_at))
       || !['verified','observed'].includes(p.time_basis) || (p.time_basis==='verified' && !Number.isFinite(Date.parse(p.effective_at)))) throw new Error('프로필 기록이 잘못됐습니다.');
   return value;
 }

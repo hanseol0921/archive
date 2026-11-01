@@ -25,5 +25,6 @@ export default function WeverseImport() {
   return <main className="wv-import"><a href="/admin/comments">댓글로 돌아가기</a><h1>위버스 댓글·프로필 가져오기</h1>
     <label><FolderOpen size={18}/> 아티스트 폴더<input type="file" webkitdirectory="" multiple disabled={busy} onChange={select}/></label>
     {selection && <p>리우 댓글 {selection.archive.comments?.filter(c=>c.is_target_artist).length||0}개 · 멤버 댓글 {selection.archive.comments?.filter(c=>c.author_type==='artist'&&!c.is_target_artist&&selection.archive.posts?.some(p=>p.id===c.post_id&&p.is_target_artist)).length||0}개 · 프로필 {selection.archive.profiles.length}개</p>}
+    {!!selection?.archive.unavailable_originals?.length && <p role="status">조회할 수 없는 원글 {selection.archive.unavailable_originals.length}개는 이전에 확보한 내용으로 보존합니다. 접근 제한 원글은 관리자에게만 표시됩니다.</p>}
     <button disabled={!selection||busy} onClick={upload}><Upload size={18}/> 가져오기</button><p role="status">{status}</p></main>;
 }

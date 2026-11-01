@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {UserRound,CornerDownRight} from 'lucide-react';
 import {supabase} from './supabaseClient';
 import ArchiveLayout from './ArchiveLayout';
-import WeverseProfile from './WeverseProfile';
+import WeverseProfile, {WeverseProfileName,WeverseMemberAvatar} from './WeverseProfile';
 import {commentThread,sourcePostId,WEVERSE_ARTIST} from './weverseData';
 import './styles/Weverse.css';
 import useTabVisibility from './useTabVisibility';
@@ -11,8 +11,8 @@ function CommentContent({row,isAdmin}) {
   return <div className={row.is_target_artist?'wv-comment-author artist':'wv-comment-author'}>
     {row.author_type==='artist' && row.is_target_artist && <WeverseProfile at={row.created_at} sourceId={row.post_id} name={row.author} isAdmin={isAdmin}/>}
     {row.author_type==='fan' && <span className="wv-fan-avatar" role="img" aria-label="원도어 기본 프로필"><UserRound size={23}/></span>}
-    {row.author_type==='artist' && !row.is_target_artist && <span className="wv-member-avatar" role="img" aria-label="멤버 프로필"><UserRound size={23}/></span>}
-    <div><div className="wv-comment-byline"><strong>{row.author_type==='fan'?'원도어':row.author}</strong><time>{row.created_at?new Date(row.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):''}</time></div>
+    {row.author_type==='artist' && !row.is_target_artist && <WeverseMemberAvatar name={row.author} at={row.created_at} sourceId={row.post_id}/>}
+    <div><div className="wv-comment-byline"><strong>{row.author_type==='fan'?'원도어':row.is_target_artist?<WeverseProfileName at={row.created_at} sourceId={row.post_id} name={row.author}/>:row.author}</strong><time>{row.created_at?new Date(row.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):''}</time></div>
       <p className="wv-comment-text">{row.text}</p>{row.images?.map((image,i)=><img className="wv-comment-image" key={i} src={image.url} alt="댓글 이미지" loading="lazy"/>)}
       {row.links?.map(url=><a key={url} className="wv-comment-link" href={url} target="_blank" rel="noreferrer">{url}</a>)}</div></div>;
 }
