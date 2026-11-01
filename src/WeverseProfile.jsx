@@ -32,8 +32,8 @@ function loadProfiles() {
   return cache;
 }
 
-export default function WeverseProfile({at,sourceId=null,name='리우',isAdmin=false}) {
-  const [state,setState]=useState({snapshots:[],overrides:[]}),[open,setOpen]=useState(false),[error,setError]=useState('');
+function useHistoricalProfile(at,sourceId) {
+  const [state,setState]=useState({snapshots:[],overrides:[]}),[error,setError]=useState('');
   useEffect(()=>{
     let active=true;
     const refresh=()=>loadProfiles().then(data=>{if(active){setState(data);setError('');}}).catch(()=>{if(active)setError('위버스 프로필 기록을 불러오지 못했습니다.');});
@@ -42,6 +42,17 @@ export default function WeverseProfile({at,sourceId=null,name='리우',isAdmin=f
   },[]);
   const selectedProfile=resolveWeverseProfile(state.snapshots,state.overrides,at,sourceId);
   const profile=enrichSharedProfile(selectedProfile,state.snapshots,selectedProfile?.time_basis==='manual'?at:null);
+  return {state, profile, error};
+}
+
+export function WeverseProfileName({at,sourceId=null,name='리우'}) {
+  const {profile}=useHistoricalProfile(at,sourceId);
+  return profile?.name || name;
+}
+
+export default function WeverseProfile({at,sourceId=null,name='리우',isAdmin=false}) {
+  const [open,setOpen]=useState(false);
+  const {state,profile,error}=useHistoricalProfile(at,sourceId);
   return <><button className="wv-avatar" title={error||'위버스 프로필'} aria-label={`${name} 위버스 프로필`} onClick={()=>setOpen(true)}>
     {profile?.avatar_url?<img src={profile.avatar_url} style={cropStyle(profileCrop(profile.avatar_url))} alt=""/>:<UserRound size={24}/>}
     {isAdmin && <span className="wv-avatar-camera"><Camera size={20}/></span>}</button>
@@ -114,7 +125,7 @@ function ProfileViewer({at,selected,state,name,isAdmin,onClose}) {
         <button title="다음 프로필" aria-label="다음 프로필" disabled={index>=history.length-1||busy} onClick={()=>move(index+1)}><ChevronRight/></button></div>
       <div className="wv-profile-details">
       <div className="wv-profile-dots" aria-label="프로필 기록 위치">{history.map((item,i)=><button key={item.id} className={i===index?'active':''} aria-label={`${i+1}번째 프로필`} onClick={()=>move(i)} disabled={busy}/>)}</div>
-      <h2>{p.name||name}</h2><p className="wv-profile-message">{p.message}</p>
+      <h2>{p.name||name}</h2>{p.status_emoji && <p className="wv-profile-emoji" aria-label="프로필 이모지">{p.status_emoji}</p>}<p className="wv-profile-message">{p.message}</p>
       {p.observed_at && <p className="wv-profile-date">{p.time_basis==='verified'?'변경 시각':p.time_basis==='manual'?'관리자 설정':'수집 시각'} · {new Date(p.effective_at||p.observed_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})}</p>}
       {isAdmin && <button className="wv-edit-toggle" onClick={()=>setEditing(!editing)} disabled={busy}><Camera size={16}/> 기간별 프로필 설정</button>}
       {editing && <form className="wv-profile-editor" onSubmit={e=>{e.preventDefault();save();}}>

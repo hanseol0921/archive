@@ -1,3 +1,4 @@
+import { enrichSharedProfile } from './artistProfileIdentity.js';
 export const WEVERSE_ARTIST = 'c630d3be61c5953b1b70c3b4c96479e2';
 export function postTimestamp(post) { return post.posted_at || (post.date ? `${post.date}T00:00:00+09:00` : null); }
 
@@ -26,7 +27,7 @@ export function resolveWeverseProfile(snapshots, overrides, at, sourceId=null) {
   if (manual) return {...manual,time_basis:'manual'};
   const ordered = [...snapshots].sort((a,b) => Date.parse(a.effective_at || a.observed_at) - Date.parse(b.effective_at || b.observed_at));
   const verified=ordered.filter(p=>p.time_basis==='verified'&&Date.parse(p.effective_at)<=time).at(-1);
-  if(verified)return verified;
+  if(verified)return enrichSharedProfile(verified, ordered, at);
   // Once DM change times are known, a later scrape must not override history.
   if (ordered.some(p => p.shared_dm_boundary)) {
     return ordered.filter(p => Date.parse(p.effective_at || p.observed_at) <= time).at(-1) || null;

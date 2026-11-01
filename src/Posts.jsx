@@ -9,7 +9,7 @@ import "./styles/Posts.css";
 import TagPicker from "./TagPicker";
 import ContentReport from "./ContentReport";
 import { deleteFromR2, getR2Key } from "./r2Storage";
-import WeverseProfile from './WeverseProfile';
+import WeverseProfile, { WeverseProfileName } from './WeverseProfile';
 import {PostComments} from './WeverseComments';
 import {sourcePostId,postTimestamp} from './weverseData';
 import {loadMemberPosts} from './memberPosts';
@@ -1386,7 +1386,7 @@ function handleEditCropEnd(
                           {post.is_member_post ? <span className="wv-member-avatar" aria-label="멤버 프로필"><UserRound size={23}/></span> : <WeverseProfile at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)} name={post.author} isAdmin={isAdmin} />}
                         </div>
                         <div className="post-list-identity">
-                          {post.author && <div className="post-author">{post.author}</div>}
+                          {post.author && <div className="post-author">{post.is_member_post ? post.author : <WeverseProfileName at={postTimestamp(post)} sourceId={sourcePostId(post.weverse_url)} name={post.author}/>}</div>}
                         <div>
                           <span className="post-date">
                             {formatDate(
@@ -1554,7 +1554,7 @@ function handleEditCropEnd(
 
                   {selectedPost.author && (
                     <div className="post-modal-author">
-                      {selectedPost.author}
+                      {selectedPost.is_member_post ? selectedPost.author : <WeverseProfileName at={postTimestamp(selectedPost)} sourceId={sourcePostId(selectedPost.weverse_url)} name={selectedPost.author}/>}
                     </div>
                   )}
 

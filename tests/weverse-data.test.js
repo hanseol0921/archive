@@ -64,3 +64,20 @@ test('DM start times control post profiles independently of scrape time and DM r
   assert.equal(resolveWeverseProfile(snapshots,[],'2026-09-01T00:00:00Z'),null);
   assert.equal(snapshots.some(p=>p.avatar_url==='other.jpg'),false);
 });
+
+
+test('DM boundary carries nickname, avatar, emoji, cover and message with independent inheritance', () => {
+  const rows=sharedWeverseProfileSnapshots([
+    {id:'old',room_id:'WRBQM41',from_sent_at:'2026-10-01T00:00:00Z',name:'old name',avatar_url:'old.jpg',background_url:'cover.jpg',message:'old message',status_emoji:'💙'},
+    {id:'new',room_id:'WRBQM41',from_sent_at:'2026-11-01T06:03:00Z',name:'new name',avatar_url:'new.jpg',status_emoji:'🐶'},
+  ]);
+  const before=resolveWeverseProfile(rows,[],'2026-11-01T06:02:59Z');
+  const after=resolveWeverseProfile(rows,[],'2026-11-01T06:03:00Z');
+  assert.equal(before.name,'old name');
+  assert.equal(before.status_emoji,'💙');
+  assert.equal(after.name,'new name');
+  assert.equal(after.avatar_url,'new.jpg');
+  assert.equal(after.status_emoji,'🐶');
+  assert.equal(after.background_url,'cover.jpg');
+  assert.equal(after.message,'old message');
+});
