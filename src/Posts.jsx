@@ -1300,7 +1300,7 @@ function handleEditCropEnd(
     .sort((a,b)=>(Date.parse(postTimestamp(b)) || 0)-(Date.parse(postTimestamp(a)) || 0));
   const filteredPosts = normalizedSearch
     ? visiblePosts.filter((post) =>
-        [post.content, post.author, post.date, post.diary_title, ...(Array.isArray(post.tags) ? post.tags : [])]
+        [post.content, post.author, post.date, post.diary_title, ...(Array.isArray(post.tags) ? post.tags : []), ...(Array.isArray(post.search_tags) ? post.search_tags : [])]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedSearch)),
       )
@@ -1321,6 +1321,10 @@ function handleEditCropEnd(
         searchPlaceholder="게시글 내용을 검색해보세요"
       >
           <div className="post-content" hidden={!!selectedPost}>
+            <label className="post-search">
+              <span>게시글 검색</span>
+              <input type="search" placeholder="본문, 작성자, 날짜, 태그 검색" value={search} onChange={event => setSearch(event.target.value)} />
+            </label>
             {canShowMembers && <label className="member-post-toggle">멤버 게시글<input type="checkbox" role="switch" checked={showMemberPosts} onChange={e=>setShowMemberPosts(e.target.checked)}/></label>}
             {memberError && showMemberPosts && <p role="alert">{memberError}</p>}
 
@@ -1339,7 +1343,7 @@ function handleEditCropEnd(
               {!loading &&
                 filteredPosts.length === 0 && (
                   <div className="post-empty">
-                    아직 게시글이 없습니다.
+                    {normalizedSearch ? "검색 결과가 없습니다." : "아직 게시글이 없습니다."}
                   </div>
                 )}
 
