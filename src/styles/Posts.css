@@ -819,3 +819,7 @@
 
 .post-search { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 4px; text-align: left; }
 .post-search input { flex: 1 1 180px; min-width: 0; padding: 8px 10px; border: 1px solid #ded9d0; border-radius: 6px; background: #fff; color: inherit; font: inherit; }
+
+.post-date-filter { display:flex; flex:0 0 auto; flex-wrap:wrap; align-items:center; gap:8px; padding:0 4px 10px; font-size:12px; text-align:left; }
+.post-date-filter label { display:flex; align-items:center; gap:6px; min-width:0; }
+.post-date-filter input, .post-date-filter button { min-width:0; padding:6px 8px; border:1px solid #ded9d0; border-radius:5px; background:#fff; color:inherit; font:inherit; }
