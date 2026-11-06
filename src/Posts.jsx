@@ -27,6 +27,7 @@ function Posts({ isAdmin = false }) {
   const [photos, setPhotos] = useState([]);
   const [videos, setVideos] = useState([]);
   const [search, setSearch] = useState("");
+  const [copiedWeverseUrl,setCopiedWeverseUrl] = useState("");
   const [startDate,setStartDate] = useState("");
   const [endDate,setEndDate] = useState("");
 
@@ -1595,9 +1596,21 @@ function handleEditCropEnd(
                   <summary aria-label="게시글 설정">⋮</summary>
                   <div className="post-entry-more-panel">
                     {selectedPost.weverse_url && (
-                      <a href={selectedPost.weverse_url} target="_blank" rel="noreferrer">
-                        위버스 바로가기
-                      </a>
+                      <>
+                        <a href={selectedPost.weverse_url} target="_blank" rel="noreferrer">
+                          위버스 바로가기
+                        </a>
+                        <button type="button" onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(selectedPost.weverse_url);
+                            setCopiedWeverseUrl(selectedPost.weverse_url);
+                          } catch {
+                            window.prompt('아래 위버스 링크를 복사해 주세요.', selectedPost.weverse_url);
+                          }
+                        }}>
+                          {copiedWeverseUrl === selectedPost.weverse_url ? '복사 완료' : '위버스 링크 복사'}
+                        </button>
+                      </>
                     )}
                     {isAdmin && !selectedPost.is_member_post && (
                       <>
